@@ -1,0 +1,1478 @@
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+from tqdm import tqdm
+import warnings
+import joblib
+warnings.filterwarnings('ignore')
+import matplotlib.pyplot as plt
+import pandas as pd
+import tensorflow as tf
+from tensorflow.keras.layers import Input, Dense, Concatenate, Layer, BatchNormalization, Activation, LSTM, Attention, Reshape, Dropout
+from tensorflow.keras.models import Model
+from tensorflow.keras.optimizers import Adam
+from tensorflow.keras.initializers import GlorotUniform
+from keras.callbacks import EarlyStopping
+from pandas.api.types import is_string_dtype
+from pandas.api.types import is_numeric_dtype
+from pandas.api.types import is_interval_dtype
+import numpy as np
+import copy
+
+import matplotlib as mpl
+import seaborn as sns
+import datetime as dt
+from datetime import timedelta
+import re
+import openpyxl
+import operator
+
+from sklearn import tree
+from sklearn import ensemble
+from sklearn.metrics import mean_squared_error, r2_score
+from sklearn.ensemble import GradientBoostingRegressor
+from sklearn.cross_decomposition import PLSRegression
+from sklearn.linear_model import Ridge
+from sklearn.feature_selection import f_regression
+from sklearn.model_selection import train_test_split
+from sklearn.svm import SVR
+from sklearn.preprocessing import StandardScaler
+from sklearn.pipeline import make_pipeline
+from sklearn.neural_network import MLPRegressor
+import json
+import statsmodels.api as sm
+from statsmodels.graphics.tsaplots import plot_pacf, plot_acf
+import warnings
+warnings.filterwarnings('ignore')
+import time
+import sqlalchemy
+from urllib.parse import quote_plus
+import os
+import glob
+import pickle
+from scipy.stats import mstats
+import plotly.express as px
+import plotly.graph_objects as go
+import base64
+from plotly.offline import download_plotlyjs, init_notebook_mode, plot, iplot
+from io import BytesIO
+from IPython.display import clear_output
+from IPython.display import Image
+import sys
+from importlib import reload
+from sklearn.neighbors import LocalOutlierFactor
+from functools import reduce
+import datetime
+import math
+import itertools
+from collections import defaultdict
+from datetime import datetime, timedelta 
+from threading import *
+from operator import is_not
+from functools import partial
+from keras.layers import Dense, Activation
+from keras.models import Sequential
+import scipy
+from sklearn.model_selection import cross_val_score
+import plotly.offline as py
+py.init_notebook_mode(connected=True)
+import plotly.graph_objs as go
+import plotly.tools as tls
+from collections import Counter
+from sklearn.feature_selection import mutual_info_classif
+#from tensorflow import keras
+#from keras.models import load_model
+from shutil import copyfile
+from shutil import rmtree
+import streamlit as st
+import requests
+from csv import DictWriter
+import time
+import concurrent.futures
+
+DF_train = pd.read_csv('DF_New_Model.csv')
+
+def calculate_constraints_new(row, Mill_Comb, DF_train):
+    Constraint = {}
+    for item in Mill_Comb:
+        if row[str(item)].iloc[0] == 1:
+            x = [x for x in str(item).split("_")[1]]
+            load_ratio = row['LOAD'].iloc[0] / row['LOAD/FUEL'].iloc[0]
+
+            if x[0] == '1':
+                Constraint['A_Mill_Loading_R'] = {
+                    'Upper': min(((1 + p) * row['A_Mill_Loading_R'].values[0]), 76 / load_ratio),
+                    'Lower': max(((1 - p) * row['A_Mill_Loading_R'].values[0]), 52 / load_ratio)}
+                Constraint['LAYR  A1 '] = {
+                    'Upper': row['LAYR  A1 '].values[0],
+                    'Lower': row['LAYR  A1 '].values[0]}
+                Constraint['MILL A OUTL MIXTURE PRESS'] = {
+                    'Upper': min(DF_train['MILL A OUTL MIXTURE PRESS'][(DF_train['COAL FEEDER A FEEDRATE'] <= input_row['COAL FEEDER A FEEDRATE'].iloc[0]*1.1) & (DF_train['COAL FEEDER A FEEDRATE'] > input_row['COAL FEEDER A FEEDRATE'].iloc[0]*0.9)].max(), 4),
+                    'Lower': max(DF_train['MILL A OUTL MIXTURE PRESS'][(DF_train['COAL FEEDER A FEEDRATE'] <= input_row['COAL FEEDER A FEEDRATE'].iloc[0]*1.1) & (DF_train['COAL FEEDER A FEEDRATE'] > input_row['COAL FEEDER A FEEDRATE'].iloc[0]*0.9)].min(), 0.8)}
+
+            if x[1] == '1':
+                Constraint['B_Mill_Loading_R'] = {
+                    'Upper': min(((1 + p) * row['B_Mill_Loading_R'].values[0]), 76 / load_ratio),
+                    'Lower': max(((1 - p) * row['B_Mill_Loading_R'].values[0]), 52 / load_ratio)}
+                Constraint['LAYR  B1 '] = {
+                    
+                    'Upper': row['LAYR  B1 '].values[0],
+                    'Lower': row['LAYR  B1 '].values[0]}
+                
+                
+                Constraint['LAYR  AB1 '] = {
+                    'Upper': min(DF_train['LAYR  AB1 '][(DF_train['LOAD'] <= row['LOAD'].values[0]) & (DF_train['COAL FEEDER B FEEDRATE'] > 20)].max(), 100),
+                    'Lower': max(DF_train['LAYR  AB1 '][(DF_train['LOAD'] >= row['LOAD'].values[0])  & (DF_train['COAL FEEDER B FEEDRATE'] > 20)].min(), 20)}
+                Constraint['MILL B OUTL MIXTURE PRESS'] = {
+                    'Upper': min(DF_train['MILL B OUTL MIXTURE PRESS'][(DF_train['COAL FEEDER B FEEDRATE'] <= input_row['COAL FEEDER B FEEDRATE'].iloc[0]*1.1) & (DF_train['COAL FEEDER B FEEDRATE'] > input_row['COAL FEEDER B FEEDRATE'].iloc[0]*0.9)].max(), 4),
+                    'Lower': max(DF_train['MILL B OUTL MIXTURE PRESS'][(DF_train['COAL FEEDER B FEEDRATE'] <= input_row['COAL FEEDER B FEEDRATE'].iloc[0]*1.1) & (DF_train['COAL FEEDER B FEEDRATE'] > input_row['COAL FEEDER B FEEDRATE'].iloc[0]*0.9)].min(), 0.8)}
+                
+                
+                
+                
+            if x[2] == '1':
+                Constraint['C_Mill_Loading_R'] = {
+                    'Upper': min(((1 + p) * row['C_Mill_Loading_R'].values[0]), 76 / load_ratio),
+                    'Lower': max(((1 - p) * row['C_Mill_Loading_R'].values[0]), 52 / load_ratio)}
+                Constraint['LAYR  C1 '] = {
+                    'Upper': row['LAYR  C1 '].values[0],
+                    'Lower': row['LAYR  C1 '].values[0]}
+                
+                Constraint['MILL C OUTL MIXTURE PRESS'] = {
+                    'Upper': min(DF_train['MILL C OUTL MIXTURE PRESS'][(DF_train['COAL FEEDER C FEEDRATE'] <= input_row['COAL FEEDER C FEEDRATE'].iloc[0]*1.1) & (DF_train['COAL FEEDER C FEEDRATE'] > input_row['COAL FEEDER C FEEDRATE'].iloc[0]*0.9)].max(), 4),
+                    'Lower': max(DF_train['MILL C OUTL MIXTURE PRESS'][(DF_train['COAL FEEDER C FEEDRATE'] <= input_row['COAL FEEDER C FEEDRATE'].iloc[0]*1.1) & (DF_train['COAL FEEDER C FEEDRATE'] > input_row['COAL FEEDER C FEEDRATE'].iloc[0]*0.9)].min(), 0.8)}
+                
+                
+                
+                Constraint['LAYR  BC1 '] = {
+                    'Upper': min(DF_train['LAYR  BC1 '][(DF_train['LOAD'] <= row['LOAD'].values[0])  & (DF_train['COAL FEEDER C FEEDRATE'] > 20)].max(), 100),
+                    'Lower': max(DF_train['LAYR  BC1 '][(DF_train['LOAD'] >= row['LOAD'].values[0])  & (DF_train['COAL FEEDER C FEEDRATE'] > 20)].min(), 20)}
+            if x[3] == '1':
+                Constraint['D_Mill_Loading_R'] = {
+                    'Upper': min(((1 + p) * row['D_Mill_Loading_R'].values[0]), 76 / load_ratio),
+                    'Lower': max(((1 - p) * row['D_Mill_Loading_R'].values[0]), 52 / load_ratio)}
+                Constraint['MILL D OUTL MIXTURE PRESS'] = {
+                    'Upper': min(DF_train['MILL D OUTL MIXTURE PRESS'][(DF_train['COAL FEEDER D FEEDRATE'] <= input_row['COAL FEEDER D FEEDRATE'].iloc[0]*1.1) & (DF_train['COAL FEEDER D FEEDRATE'] > input_row['COAL FEEDER D FEEDRATE'].iloc[0]*0.9)].max(), 4),
+                    'Lower': max(DF_train['MILL D OUTL MIXTURE PRESS'][(DF_train['COAL FEEDER D FEEDRATE'] <= input_row['COAL FEEDER D FEEDRATE'].iloc[0]*1.1) & (DF_train['COAL FEEDER D FEEDRATE'] > input_row['COAL FEEDER D FEEDRATE'].iloc[0]*0.9)].min(), 0.8)}
+                Constraint['LAYR  D1 '] = {
+                    'Upper': row['LAYR  D1 '].values[0],
+                    'Lower': row['LAYR  D1 '].values[0]}
+                Constraint['LAYR  DD1 '] = {
+                    'Upper': min(DF_train['LAYR  DD1 '][(DF_train['LOAD'] <= row['LOAD'].values[0])  & (DF_train['COAL FEEDER D FEEDRATE'] > 20)].max(), 100),
+                    'Lower': max(DF_train['LAYR  DD1 '][(DF_train['LOAD'] >= row['LOAD'].values[0])  & (DF_train['COAL FEEDER D FEEDRATE'] > 20)].min(), 20)}
+            if x[4] == '1':
+                Constraint['E_Mill_Loading_R'] = {
+                    'Upper': min(((1 + p) * row['E_Mill_Loading_R'].values[0]), 76 / load_ratio),
+                    'Lower': max(((1 - p) * row['E_Mill_Loading_R'].values[0]), 52 / load_ratio)}
+                Constraint['MILL E OUTL MIXTURE PRESS'] = {
+                    'Upper': min(DF_train['MILL E OUTL MIXTURE PRESS'][(DF_train['COAL FEEDER E FEEDRATE'] <= input_row['COAL FEEDER E FEEDRATE'].iloc[0]*1.1) & (DF_train['COAL FEEDER E FEEDRATE'] > input_row['COAL FEEDER E FEEDRATE'].iloc[0]*0.9)].max(), 4),
+                    'Lower': max(DF_train['MILL E OUTL MIXTURE PRESS'][(DF_train['COAL FEEDER E FEEDRATE'] <= input_row['COAL FEEDER E FEEDRATE'].iloc[0]*1.1) & (DF_train['COAL FEEDER E FEEDRATE'] > input_row['COAL FEEDER E FEEDRATE'].iloc[0]*0.9)].min(), 0.8)}
+                
+                Constraint['LAYR  E1 '] = {
+                    'Upper': row['LAYR  E1 '].values[0],
+                    'Lower': row['LAYR  E1 '].values[0]}
+                Constraint['LAYR  DE1 '] = {
+                    'Upper': min(DF_train['LAYR  DE1 '][(DF_train['LOAD'] <= row['LOAD'].values[0])  & (DF_train['COAL FEEDER E FEEDRATE'] > 20)].max(), 100),
+                    'Lower': max(DF_train['LAYR  DE1 '][(DF_train['LOAD'] >= row['LOAD'].values[0])  & (DF_train['COAL FEEDER E FEEDRATE'] > 20)].min(), 20)}
+            if x[5] == '1':
+                Constraint['F_Mill_Loading_R'] = {
+                    'Upper': min(((1 + p) * row['F_Mill_Loading_R'].values[0]), 76 / load_ratio),
+                    'Lower': max(((1 - p) * row['F_Mill_Loading_R'].values[0]), 52 / load_ratio)}
+                Constraint['MILL F OUTL MIXTURE PRESS'] = {
+                    'Upper': min(DF_train['MILL F OUTL MIXTURE PRESS'][(DF_train['COAL FEEDER F FEEDRATE'] <= input_row['COAL FEEDER F FEEDRATE'].iloc[0]*1.1) & (DF_train['COAL FEEDER F FEEDRATE'] > input_row['COAL FEEDER F FEEDRATE'].iloc[0]*0.9)].max(), 4),
+                    'Lower': max(DF_train['MILL F OUTL MIXTURE PRESS'][(DF_train['COAL FEEDER F FEEDRATE'] <= input_row['COAL FEEDER F FEEDRATE'].iloc[0]*1.1) & (DF_train['COAL FEEDER F FEEDRATE'] > input_row['COAL FEEDER F FEEDRATE'].iloc[0]*0.9)].min(), 0.8)}
+                                
+                
+                Constraint['LAYR  F1 '] = {
+                    'Upper': row['LAYR  F1 '].values[0],
+                    'Lower': row['LAYR  F1 '].values[0]}
+                Constraint['LAYR  EF1 '] = {
+                    'Upper': min(DF_train['LAYR  EF1 '][(DF_train['LOAD'] <= row['LOAD'].values[0])  & (DF_train['COAL FEEDER F FEEDRATE'] > 20)].max(), 100),
+                    'Lower': max(DF_train['LAYR  EF1 '][(DF_train['LOAD'] >= row['LOAD'].values[0])  & (DF_train['COAL FEEDER F FEEDRATE'] > 20)].min(), 20)}
+            if x[0] == '0':
+                Constraint['A_Mill_Loading_R'] = {
+                    'Upper': 0,
+                    'Lower': 0}
+                Constraint['MILL A OUTL MIXTURE PRESS'] = {
+                    'Upper': row['MILL A OUTL MIXTURE PRESS'].iloc[0],
+                    'Lower': row['MILL A OUTL MIXTURE PRESS'].iloc[0]}
+                Constraint['LAYR  A1 '] = {
+                    'Upper': 100,
+                    'Lower': 20}
+
+            if x[1] == '0':
+                Constraint['B_Mill_Loading_R'] = {
+                    'Upper': 0,
+                    'Lower': 0}
+                Constraint['MILL B OUTL MIXTURE PRESS'] = {
+                    'Upper': row['MILL B OUTL MIXTURE PRESS'].iloc[0],
+                    'Lower': row['MILL B OUTL MIXTURE PRESS'].iloc[0]}
+                Constraint['LAYR  B1 '] = {
+                    'Upper': 100,
+                    'Lower': 20}
+                Constraint['LAYR  AB1 '] = {
+                    'Upper': min(DF_train['LAYR  AB1 '][DF_train['LOAD'] <= row['LOAD'].values[0]].max(), 100),
+                    'Lower': max(DF_train['LAYR  AB1 '][DF_train['LOAD'] >= row['LOAD'].values[0]].min(), 20)}
+            if x[2] == '0':
+                Constraint['C_Mill_Loading_R'] = {
+                    'Upper': 0,
+                    'Lower': 0}
+                Constraint['MILL C OUTL MIXTURE PRESS'] = {
+                    'Upper': row['MILL C OUTL MIXTURE PRESS'].iloc[0],
+                    'Lower': row['MILL C OUTL MIXTURE PRESS'].iloc[0]}
+                Constraint['LAYR  C1 '] = {
+                    'Upper': 100,
+                    'Lower': 20}
+                Constraint['LAYR  BC1 '] = {
+                    'Upper': min(DF_train['LAYR  BC1 '][DF_train['LOAD'] <= row['LOAD'].values[0]].max(), 100),
+                    'Lower': max(DF_train['LAYR  BC1 '][DF_train['LOAD'] >= row['LOAD'].values[0]].min(), 20)}
+            if x[3] == '0':
+                Constraint['D_Mill_Loading_R'] = {
+                    'Upper': 0,
+                    'Lower': 0}
+                Constraint['MILL D OUTL MIXTURE PRESS'] = {
+                    'Upper': row['MILL D OUTL MIXTURE PRESS'].iloc[0],
+                    'Lower': row['MILL D OUTL MIXTURE PRESS'].iloc[0]}
+                Constraint['LAYR  D1 '] = {
+                    'Upper': 100,
+                    'Lower': 20}
+                Constraint['LAYR  DD1 '] = {
+                    'Upper': min(DF_train['LAYR  DD1 '][DF_train['LOAD'] <= row['LOAD'].values[0]].max(), 100),
+                    'Lower': max(DF_train['LAYR  DD1 '][DF_train['LOAD'] >= row['LOAD'].values[0]].min(), 20)}
+            if x[4] == '0':
+                Constraint['E_Mill_Loading_R'] = {
+                    'Upper': 0,
+                    'Lower': 0}
+                Constraint['MILL E OUTL MIXTURE PRESS'] = {
+                    'Upper': row['MILL E OUTL MIXTURE PRESS'].iloc[0],
+                    'Lower': row['MILL E OUTL MIXTURE PRESS'].iloc[0]}
+                Constraint['LAYR  E1 '] = {
+                    'Upper': 100,
+                    'Lower': 20}
+                Constraint['LAYR  DE1 '] = {
+                    'Upper': min(DF_train['LAYR  DE1 '][DF_train['LOAD'] <= row['LOAD'].values[0]].max(), 100),
+                    'Lower': max(DF_train['LAYR  DE1 '][DF_train['LOAD'] >= row['LOAD'].values[0]].min(), 20)}
+            if x[5] == '0':
+                Constraint['F_Mill_Loading_R'] = {
+                    'Upper': 0,
+                    'Lower': 0}
+                Constraint['MILL F OUTL MIXTURE PRESS'] = {
+                    'Upper': row['MILL F OUTL MIXTURE PRESS'].iloc[0],
+                    'Lower': row['MILL F OUTL MIXTURE PRESS'].iloc[0]}
+                Constraint['LAYR  F1 '] = {
+                    'Upper': 100,
+                    'Lower': 20}
+                Constraint['LAYR  EF1 '] = {
+                    'Upper': min(DF_train['LAYR  EF1 '][DF_train['LOAD'] <= row['LOAD'].values[0]].max(), 100),
+                    'Lower': max(DF_train['LAYR  EF1 '][DF_train['LOAD'] >= row['LOAD'].values[0]].min(), 20)}
+
+    Constraint['LAYR  J1 '] = {'Upper': 20, 'Lower': 0}
+    Constraint['LAYR  I1 '] = {'Upper': 20, 'Lower': 0}
+    Constraint['LAYR  H1 '] = {'Upper': 20, 'Lower': 0}
+    Constraint['LAYR  G1 '] = {'Upper': 20, 'Lower': 0}
+
+    Constraint['LAYR  FF1 '] = {'Upper': min(((1 + p) * row['LAYR  FF1 '].values[0]), 100), 'Lower': max(((1 - p) * row['LAYR  FF1 '].values[0]), 10)}
+    Constraint['LAYR  OD1 '] = {'Upper': min(((1 + p) * row['LAYR  OD1 '].values[0]), 100), 'Lower': max(((1 - p) * row['LAYR  OD1 '].values[0]), 10)}
+    Constraint['LAYR  OC1 '] = {'Upper': min(((1 + p) * row['LAYR  OC1 '].values[0]), 100), 'Lower': max(((1 - p) * row['LAYR  OC1 '].values[0]), 10)}
+    Constraint['LAYR  CC1 '] = {'Upper': min(((1 + p) * row['LAYR  CC1 '].values[0]), 100), 'Lower': max(((1 - p) * row['LAYR  CC1 '].values[0]), 10)}
+    Constraint['LAYR  OB1 '] = {'Upper': min(((1 + p) * row['LAYR  OB1 '].values[0]), 100), 'Lower': max(((1 - p) * row['LAYR  OB1 '].values[0]), 10)}
+    Constraint['LAYR  OA1 '] = {'Upper': min(((1 + p) * row['LAYR  OA1 '].values[0]), 100), 'Lower': max(((1 - p) * row['LAYR  OA1 '].values[0]), 10)}
+    Constraint['LAYR  AA1 '] = {'Upper': min(((1 + p) * row['LAYR  AA1 '].values[0]), 100), 'Lower': max(((1 - p) * row['LAYR  AA1 '].values[0]), 10)}
+    
+    return Constraint
+
+def get_soot_blowed(value):
+    if value >= 0:
+        return 0
+    else:
+        return 1
+    
+def generate_values_damper(constraints, target_sum):
+    num_features = len(constraints)
+    num_rows_1 = 25
+    values = np.zeros((num_rows_1, num_features))
+    
+ 
+    for i in range(num_rows_1):
+        while True:
+            remaining_sum = target_sum
+            for j, (var, limits) in enumerate(constraints.items()):
+                if j == num_features - 1:
+                    values[i, j] = remaining_sum
+                else:
+                    values[i, j] = np.random.uniform(low=limits['Lower'], high=limits['Upper'])
+                    remaining_sum -= values[i, j]
+            values[i, -1] = np.clip(remaining_sum, constraints[list(constraints.keys())[-1]]['Lower'], constraints[list(constraints.keys())[-1]]['Upper'])
+ 
+            total_sum = np.sum(values[i, :])
+            if np.isclose(total_sum, target_sum, atol=input_row[list1].sum().sum()*0.025):
+                break
+ 
+    return values
+
+def generate_values_mill(constraints, target_sum):
+    num_features = len(constraints)
+    values = np.zeros((30, num_features))
+ 
+    for i in range(30):
+        while True:
+            remaining_sum = target_sum
+            for j, (var, limits) in enumerate(constraints.items()):
+                if j == num_features - 1:
+                    values[i, j] = remaining_sum
+                else:
+                    values[i, j] = np.random.uniform(low=limits['Lower'], high=limits['Upper'])
+                    remaining_sum -= values[i, j]
+            values[i, -1] = np.clip(remaining_sum, constraints[list(constraints.keys())[-1]]['Lower'], constraints[list(constraints.keys())[-1]]['Upper'])
+ 
+            total_sum = np.sum(values[i, :])
+            if np.isclose(total_sum, target_sum, atol=0.01):
+                break
+ 
+    return values
+
+
+def generate_dataset_gen(input_row, num_rows, loaded_rfr, column_order):
+    
+    # Sample Constraint calculation placeholder
+    Constraint = calculate_constraints_new(input_row, Mill_Comb, DF_train)
+    Constraint['PA_HDR_PR'] = {'Upper':  9.5, 
+                               'Lower':  8.5}
+    
+    Constraint['OHDR'] = {'Upper': 1.05*input_row['OHDR'].iloc[0],
+                          'Lower' : 0.95*input_row['OHDR'].iloc[0]}
+    
+    Constraint['AIR FLOW'] = {'Upper': input_row['AIR FLOW'].iloc[0],
+                              'Lower' : 0.97*input_row['AIR FLOW'].iloc[0]}
+    print('Constraint calculated')
+    print(Constraint)
+    
+    target_sum1 = input_row[list1].sum(axis=1).iloc[0]
+    target_sum2 = 1
+
+    # Generate values for list1 and list2 (assuming generate_values function is defined)
+    values_list1 = generate_values_damper({var: Constraint[var] for var in list1}, target_sum1)
+    data_1 = {}
+    for i, var in enumerate(list1):
+            data_1[var] = values_list1[:, i]
+    data_1 = pd.DataFrame(data_1)
+    
+    print('Damper Calculated')
+    print(data_1.shape)
+    
+    values_list2 = generate_values_mill({var: Constraint[var] for var in list2}, target_sum2)
+    data_2 = {}
+    for i, var in enumerate(list2):
+            data_2[var] = values_list2[:, i]
+    data_2 = pd.DataFrame(data_2)
+    print('Mill Calculated')
+
+    
+    # Generate values for PA_HDR_PR
+    values_new_var = np.random.uniform(Constraint['PA_HDR_PR']['Lower'], 
+                                       Constraint['PA_HDR_PR']['Upper'], 
+                                       num_rows)
+    values_new_var = pd.DataFrame(values_new_var)
+    values_new_var.rename(columns={0: 'PA_HDR_PR'}, inplace=True)
+    print('PA Calculated')
+
+    
+    # Generate values for OHDR
+    values_new_var_1 = np.random.uniform(Constraint['OHDR']['Lower'], 
+                                       Constraint['OHDR']['Upper'], 
+                                       num_rows)
+    values_new_var_1 = pd.DataFrame(values_new_var_1)
+    values_new_var_1.rename(columns={0: 'OHDR'}, inplace=True)
+    print('OHDR Calculated')
+
+    
+    # Generate values for AIR FLOW
+    values_new_var_2 = np.random.uniform(Constraint['AIR FLOW']['Lower'], 
+                                       Constraint['AIR FLOW']['Upper'], 
+                                       num_rows)
+    values_new_var_2 = pd.DataFrame(values_new_var_2)
+    values_new_var_2.rename(columns={0: 'AIR FLOW'}, inplace=True)
+    print('AIR FLOW Calculated')
+
+    combinations = list(itertools.product(data_1.iterrows(), data_2.iterrows(), values_new_var.iterrows(), values_new_var_1.iterrows(), values_new_var_2.iterrows()))
+    new_data = []
+    for (index1, row1), (index2, row2), (index3, row3), (index4, row4), (index5, row5) in combinations:
+        combined_row = {**row1, **row2, **row3, **row4, **row5}
+        new_data.append(combined_row)
+
+    generated_dataset = pd.DataFrame(new_data)
+    
+    print('Combination Calculated')
+    #values_new_A = np.random.uniform(Constraint['MILL A OUTL MIXTURE PRESS']['Lower'], 
+    #                                   Constraint['MILL A OUTL MIXTURE PRESS']['Upper'], 
+    #                                   num_rows)
+    #values_new_B = np.random.uniform(Constraint['MILL B OUTL MIXTURE PRESS']['Lower'], 
+    #                                   Constraint['MILL B OUTL MIXTURE PRESS']['Upper'], 
+    #                                   num_rows)
+    #values_new_C = np.random.uniform(Constraint['MILL C OUTL MIXTURE PRESS']['Lower'], 
+    #                                   Constraint['MILL C OUTL MIXTURE PRESS']['Upper'], 
+    #                                   num_rows)
+    #                                   Constraint['MILL D OUTL MIXTURE PRESS']['Upper'], 
+    #                                   num_rows)#
+    #values_new_E = np.random.uniform(Constraint['MILL E OUTL MIXTURE PRESS']['Lower'], 
+    #                                   Constraint['MILL E OUTL MIXTURE PRESS']['Upper'], 
+    #                                   num_rows)
+    #values_new_F = np.random.uniform(Constraint['MILL F OUTL MIXTURE PRESS']['Lower'], 
+    #                                   Constraint['MILL F OUTL MIXTURE PRESS']['Upper'], 
+    #                                   num_rows)
+    #print('other')
+
+    
+    
+    
+    
+    #data['MILL A OUTL MIXTURE PRESS'] = values_new_A
+    #data['MILL B OUTL MIXTURE PRESS'] = values_new_B
+    #data['MILL C OUTL MIXTURE PRESS'] = values_new_C
+    #data['MILL D OUTL MIXTURE PRESS'] = values_new_D
+    #data['MILL E OUTL MIXTURE PRESS'] = values_new_E
+    #data['MILL F OUTL MIXTURE PRESS'] = values_new_F
+
+    # Create the DataFrame
+    #generated_dataset = pd.DataFrame(data)
+    #print('dataset')
+
+    # Add non-controllable variables from input_row
+    for var in noncontrollable:
+        generated_dataset[var] = input_row[var].values[0]
+        
+    generated_dataset['LOAD/AIR'] = generated_dataset['LOAD']/generated_dataset['AIR FLOW']
+    generated_dataset['SA_total_air'] = (generated_dataset['SA_Flow'] - (input_row['AIR FLOW'] - generated_dataset['AIR FLOW']))/generated_dataset['AIR FLOW']
+    generated_dataset['PA_total_air'] = generated_dataset['PA_Flow']/generated_dataset['AIR FLOW']
+    generated_dataset['F/A'] = (generated_dataset['LOAD']/generated_dataset['LOAD/FUEL'])/generated_dataset['AIR FLOW']
+    # Reorder columns according to column_order
+    generated_dataset = generated_dataset[column_order]
+
+    # Predict temperature using loaded_rfr
+    generated_dataset['Temp'] = loaded_rfr.predict(generated_dataset)
+
+    # Sort by Temp and select the row with the minimum temperature
+    generated_dataset.sort_values(by='Temp', ascending=True, inplace=True)
+    min_temp_row = generated_dataset.iloc[0].to_dict()
+
+    return min_temp_row, generated_dataset
+
+def generate_dataset_with_timeout(input_row, duration, loaded_rfr, column_order, timeout):
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        future = executor.submit(generate_dataset_gen, input_row, duration, loaded_rfr, column_order)
+        try:
+            return future.result(timeout=timeout)
+        except concurrent.futures.TimeoutError:
+            print("generate_dataset_gen() took too long. Restarting the loop.")
+            return None, None
+
+
+# permissible limit
+p = 0.4
+
+# A Mill
+A_0_Lower = 60
+A_0_Upper = 100
+A_1_Lower = 90
+A_1_Upper = 100
+ 
+AA_Lower = 60
+AA_Upper = 100
+ 
+# B Mill
+AB_0_Lower = 50
+AB_0_Upper = 100
+AB_1_Lower = 70
+AB_1_Upper = 100
+ 
+# B Mill
+B_0_Lower = 60
+B_0_Upper = 100
+B_1_Lower = 90
+B_1_Upper = 100
+ 
+# C Mill
+BC_0_Lower = 50
+BC_0_Upper = 100
+BC_1_Lower = 70
+BC_1_Upper = 100
+ 
+# C Mill
+C_0_Lower = 60
+C_0_Upper = 100
+C_1_Lower = 90
+C_1_Upper = 100
+ 
+CC_Lower = 50
+CC_Upper = 100
+ 
+# D Mill
+D_0_Lower = 60
+D_0_Upper = 100
+D_1_Lower = 90
+D_1_Upper = 100
+ 
+# D Mill
+DD_0_Lower = 50
+DD_0_Upper = 100
+DD_1_Lower = 70
+DD_1_Upper = 100
+ 
+# E Mill
+DE_0_Lower = 50
+DE_0_Upper = 100
+DE_1_Lower = 70
+DE_1_Upper = 100
+ 
+# E Mill
+E_0_Lower = 60
+E_0_Upper = 100
+E_1_Lower = 90
+E_1_Upper = 100
+ 
+# F Mill
+EF_0_Lower = 50
+EF_0_Upper = 100
+EF_1_Lower = 70
+EF_1_Upper = 100
+ 
+# F Mill
+F_0_Lower = 60
+F_0_Upper = 100
+F_1_Lower = 90
+F_1_Upper = 100
+ 
+FF_Lower = 40
+FF_Upper = 60
+ 
+G_Lower = 0
+G_Upper = 10
+H_Lower = 0
+H_Upper = 10
+I_Lower = 0
+I_Upper = 10
+J_Lower = 0
+J_Upper = 10
+ 
+OA_Lower = 10
+OA_Upper = 100
+OB_Lower = 10
+OB_Upper = 100
+OC_Lower = 10
+OC_Upper = 100
+OD_Lower = 10
+OD_Upper = 100
+
+Mill_Comb = ['comb_001011', 'comb_001101', 'comb_001110', 'comb_001111',
+    'comb_010110', 'comb_010111', 'comb_011010', 'comb_011011',
+    'comb_011100', 'comb_011101', 'comb_011110', 'comb_011111',
+    'comb_101011', 'comb_101101', 'comb_101110', 'comb_101111',
+    'comb_110011', 'comb_110100', 'comb_110101', 'comb_110110',
+    'comb_110111', 'comb_111000', 'comb_111010', 'comb_111011',
+    'comb_111100', 'comb_111101', 'comb_111110', 'comb_111111']
+
+list1 = ['LAYR  J1 ','LAYR  I1 ','LAYR  H1 ','LAYR  G1 ','LAYR  FF1 ','LAYR  F1 ','LAYR  EF1 ','LAYR  OD1 ','LAYR  E1 ',
+         'LAYR  DE1 ','LAYR  OC1 ','LAYR  D1 ','LAYR  DD1 ','LAYR  CC1 ','LAYR  C1 ','LAYR  BC1 ','LAYR  OB1 ','LAYR  B1 ',
+         'LAYR  AB1 ','LAYR  OA1 ','LAYR  A1 ','LAYR  AA1 ' ]
+list2 = ['A_Mill_Loading_R','B_Mill_Loading_R','C_Mill_Loading_R','D_Mill_Loading_R','E_Mill_Loading_R','F_Mill_Loading_R']
+list3 = ['MILL A OUTL MIXTURE PRESS', 'MILL B OUTL MIXTURE PRESS', 
+         'MILL C OUTL MIXTURE PRESS', 'MILL D OUTL MIXTURE PRESS', 'MILL E OUTL MIXTURE PRESS', 'MILL F OUTL MIXTURE PRESS']
+
+
+
+column_order = [
+             'LAYR  J1 ','LAYR  I1 ','LAYR  H1 ','LAYR  G1 ','LAYR  FF1 ','LAYR  F1 ','LAYR  EF1 ','LAYR  OD1 ',
+             'LAYR  E1 ','LAYR  DE1 ','LAYR  OC1 ','LAYR  D1 ','LAYR  DD1 ','LAYR  CC1 ','LAYR  C1 ','LAYR  BC1 ',
+             'LAYR  OB1 ','LAYR  B1 ','LAYR  AB1 ','LAYR  OA1 ','LAYR  A1 ','LAYR  AA1 ',
+             'MILL A OUTL MIXTURE PRESS','MILL B OUTL MIXTURE PRESS','MILL C OUTL MIXTURE PRESS','MILL D OUTL MIXTURE PRESS',
+             'MILL E OUTL MIXTURE PRESS','MILL F OUTL MIXTURE PRESS','Total_Mill','LOAD','AIR FLOW','LOAD/MILL','LOAD/AIR',
+             'LOAD/FUEL','SA_total_air','PA_total_air','soot_A','soot_B','soot_C','soot_D','OHDR','RH_Spray','PA_HDR_PR',
+             'comb_001011','comb_001101','comb_001110','comb_001111','comb_010110','comb_010111','comb_011010','comb_011011',
+             'comb_011100','comb_011101','comb_011110','comb_011111','comb_101011','comb_101101','comb_101110','comb_101111',
+             'comb_110011','comb_110100','comb_110101','comb_110110','comb_110111','comb_111000','comb_111010','comb_111011',
+             'comb_111100','comb_111101','comb_111110','comb_111111','A_Mill_Loading_R','B_Mill_Loading_R','C_Mill_Loading_R',
+             'D_Mill_Loading_R','E_Mill_Loading_R','F_Mill_Loading_R','cluster_0','cluster_1','cluster_2']
+
+
+noncontrollable = [
+       'Total_Mill','Left_Side_Damper','Right_Side_Damper','LOAD','LOAD_FEED_FLOW','COAL_FEED_FLOW','LOAD/MILL',
+       'LOAD/FUEL','soot_A','soot_B','soot_C','soot_D','soot_PSH','soot_GN','soot_LTRH','soot_LTSH','soot_FSH',
+       'soot_FRH','soot_ECO','comb_001011','comb_001101',
+       'comb_001110','comb_001111','comb_010110','comb_010111','comb_011010','comb_011011','comb_011100','comb_011101',
+       'comb_011110','comb_011111','comb_101011','comb_101101','comb_101110','comb_101111',
+       'comb_110011','comb_110100','comb_110101','comb_110110','comb_110111','comb_111000','comb_111010','comb_111011',
+       'comb_111100','comb_111101','comb_111110','comb_111111', 'MILL A OUTL MIXTURE PRESS', 'MILL B OUTL MIXTURE PRESS', 
+       'MILL C OUTL MIXTURE PRESS','MILL D OUTL MIXTURE PRESS', 'MILL E OUTL MIXTURE PRESS', 'MILL F OUTL MIXTURE PRESS', 
+       'RH_Spray', 'SA_Flow', 'PA_Flow', 'cluster_0', 'cluster_1', 'cluster_2']
+
+controllable = ['FURN_OUTLET_AVG_FLUE_TEMP', 'LAYR  J1 ', 'LAYR  I1 ', 'LAYR  H1 ', 'LAYR  G1 ', 'LAYR  FF1 ', 'LAYR  F1 ', 
+                'LAYR  EF1 ', 'LAYR  OD1 ', 'LAYR  E1 ', 'LAYR  DE1 ', 'LAYR  OC1 ', 'LAYR  D1 ', 'LAYR  DD1 ', 'LAYR  CC1 ', 
+                'LAYR  C1 ', 'LAYR  BC1 ', 'LAYR  OB1 ', 'LAYR  B1 ', 'LAYR  AB1 ', 'LAYR  OA1 ', 'LAYR  A1 ', 'LAYR  AA1 ', 
+                'A_Mill_Loading_R', 'B_Mill_Loading_R', 'C_Mill_Loading_R', 'D_Mill_Loading_R', 'E_Mill_Loading_R', 
+                'F_Mill_Loading_R', 'PA_HDR_PR', 'AIR FLOW', 'OHDR']
+
+features_2 = [ 'LAYR  J1 ','LAYR  I1 ','LAYR  H1 ','LAYR  G1 ','LAYR  FF1 ','LAYR  F1 ','LAYR  EF1 ','LAYR  OD1 ','LAYR  E1 ',
+              'LAYR  DE1 ','LAYR  OC1 ','LAYR  D1 ','LAYR  DD1 ','LAYR  CC1 ','LAYR  C1 ','LAYR  BC1 ','LAYR  OB1 ','LAYR  B1 ',
+              'LAYR  AB1 ','LAYR  OA1 ','LAYR  A1 ','LAYR  AA1 ','MILL A OUTL MIXTURE PRESS','MILL B OUTL MIXTURE PRESS',
+              'MILL C OUTL MIXTURE PRESS','MILL D OUTL MIXTURE PRESS','MILL E OUTL MIXTURE PRESS','MILL F OUTL MIXTURE PRESS',
+              'Total_Mill','Left_Side_Damper','Right_Side_Damper','LOAD','LOAD_FEED_FLOW','COAL_FEED_FLOW','LOAD/MILL','LOAD/AIR',
+ 'LOAD/FUEL',
+ 'F/A',
+ 'SA_total_air',
+ 'PA_total_air',
+ 'soot_A',
+ 'soot_B',
+ 'soot_C',
+ 'soot_D',
+ 'PA_HDR_PR',
+ 'soot_PSH',
+ 'soot_GN',
+ 'soot_LTRH',
+ 'soot_LTSH',
+ 'soot_FSH',
+ 'soot_FRH',
+ 'soot_ECO',
+ 'comb_110110',
+ 'A_Mill_Loading_R',
+ 'B_Mill_Loading_R',
+ 'C_Mill_Loading_R',
+ 'D_Mill_Loading_R',
+ 'E_Mill_Loading_R',
+ 'F_Mill_Loading_R'
+]
+
+SB_list = ['MUNDRA_U7_L1_RT_SD_RTRCT_SOT_BLWR_OPT',
+ 'MUNDRA_U7_L2_RT_SD_RTRCT_SOT_BLWR_OPT',
+ 'MUNDRA_U7_L3_RT_SD_RTRCT_SOT_BLWR_OPT',
+ 'MUNDRA_U7_L4_RT_SD_RTRCT_SOT_BLWR_OPT',
+ 'MUNDRA_U7_L5_RT_SD_RTRCT_SOT_BLWR_OPT',
+ 'MUNDRA_U7_L6_RT_SD_RTRCT_SOT_BLWR_OPT',
+ 'MUNDRA_U7_L7_RT_SD_RTRCT_SOT_BLWR_OPT',
+ 'MUNDRA_U7_L8_RT_SD_RTRCT_SOT_BLWR_OPT',
+ 'MUNDRA_U7_L10_RT_SD_RTRCT_SOT_BLWR_OPT',
+ 'MUNDRA_U7_L11_RT_SD_RTRCT_SOT_BLWR_OPT',
+ 'MUNDRA_U7_L12_RT_SD_RTRCT_SOT_BLWR_OPT',
+ 'MUNDRA_U7_L13_RT_SD_RTRCT_SOT_BLWR_OPT',
+ 'MUNDRA_U7_L14_RT_SD_RTRCT_SOT_BLWR_OPT',
+ 'MUNDRA_U7_L15_RT_SD_RTRCT_SOT_BLWR_OPT',
+ 'MUNDRA_U7_HL1_RT_SD_RTRCT_SOT_BLWR_OPT',
+ 'MUNDRA_U7_HL2_RT_SD_RTRCT_SOT_BLWR_OPT',
+ 'MUNDRA_U7_A5_RT_SD_SOT_BLWR_OPT',
+ 'MUNDRA_U7_A6_RT_SD_SOT_BLWR_OPT',
+ 'MUNDRA_U7_A7_RT_SD_SOT_BLWR_OPT',
+ 'MUNDRA_U7_A8_RT_SD_SOT_BLWR_OPT',
+ 'MUNDRA_U7_B5_RT_SD_SOT_BLWR_OPT',
+ 'MUNDRA_U7_B6_RT_SD_SOT_BLWR_OPT',
+ 'MUNDRA_U7_B7_RT_SD_SOT_BLWR_OPT',
+ 'MUNDRA_U7_B8_RT_SD_SOT_BLWR_OPT',
+ 'MUNDRA_U7_C5_RT_SD_SOT_BLWR_OPT',
+ 'MUNDRA_U7_C6_RT_SD_SOT_BLWR_OPT',
+ 'MUNDRA_U7_C7_RT_SD_SOT_BLWR_OPT',
+ 'MUNDRA_U7_C8_RT_SD_SOT_BLWR_OPT',
+ 'MUNDRA_U7_D5_RT_SD_SOT_BLWR_OPT',
+ 'MUNDRA_U7_D6_RT_SD_SOT_BLWR_OPT',
+ 'MUNDRA_U7_D7_RT_SD_SOT_BLWR_OPT',
+ 'MUNDRA_U7_D8_RT_SD_SOT_BLWR_OPT',
+ 'MUNDRA_U7_A9_RR_SD_SOT_BLWR_OPT',
+ 'MUNDRA_U7_A10_RR_SD_SOT_BLWR_OPT',
+ 'MUNDRA_U7_A11_RR_SD_SOT_BLWR_OPT',
+ 'MUNDRA_U7_A12_RR_SD_SOT_BLWR_OPT',
+ 'MUNDRA_U7_B9_RR_SD_SOT_BLWR_OPT',
+ 'MUNDRA_U7_B10_RR_SD_SOT_BLWR_OPT',
+ 'MUNDRA_U7_B11_RR_SD_SOT_BLWR_OPT',
+ 'MUNDRA_U7_B12_RR_SD_SOT_BLWR_OPT',
+ 'MUNDRA_U7_C9_RR_SD_SOT_BLWR_OPT',
+ 'MUNDRA_U7_C10_RR_SD_SOT_BLWR_OPT',
+ 'MUNDRA_U7_C11_RR_SD_SOT_BLWR_OPT',
+ 'MUNDRA_U7_D9_RR_SD_SOT_BLWR_OPT',
+ 'MUNDRA_U7_D10_RR_SD_SOT_BLWR_OPT',
+ 'MUNDRA_U7_D11_RR_SD_SOT_BLWR_OPT',
+ 'MUNDRA_U7_D12_RR_SD_SOT_BLWR_OPT',
+ 'MUNDRA_U7_R1_RT_SD_RTRCT_SOT_BLWR_OPT',
+ 'MUNDRA_U7_R2_RT_SD_RTRCT_SOT_BLWR_OPT',
+ 'MUNDRA_U7_R3_RT_SD_RTRCT_SOT_BLWR_OPT',
+ 'MUNDRA_U7_R4_RT_SD_RTRCT_SOT_BLWR_OPT',
+ 'MUNDRA_U7_R5_RT_SD_RTRCT_SOT_BLWR_OPT',
+ 'MUNDRA_U7_R1_RT_SD_RTRCT_SOT_BLWR_OPT_2',
+ 'MUNDRA_U7_R7_RT_SD_RTRCT_SOT_BLWR_OPT',
+ 'MUNDRA_U7_R8_RT_SD_RTRCT_SOT_BLWR_OPT',
+ 'MUNDRA_U7_R9_RT_SD_RTRCT_SOT_BLWR_OPT',
+ 'MUNDRA_U7_R10_RT_SD_RTRCT_SOT_BLWR_OPT',
+ 'MUNDRA_U7_R11_RT_SD_RTRCT_SOT_BLWR_OPT',
+ 'MUNDRA_U7_R12_RT_SD_RTRCT_SOT_BLWR_OPT',
+ 'MUNDRA_U7_R13_RT_SD_RTRCT_SOT_BLWR_OPT',
+ 'MUNDRA_U7_R14_RT_SD_RTRCT_SOT_BLWR_OPT',
+ 'MUNDRA_U7_R15_RT_SD_RTRCT_SOT_BLWR_OPT',
+ 'MUNDRA_U7_HR1_RT_SD_RTRCT_SOT_BLWR_OPT',
+ 'MUNDRA_U7_HR2_RT_SD_RTRCT_SOT_BLWR_OPT',
+ 'MUNDRA_U7_HL3_RT_SD_OPT_STS',
+ 'MUNDRA_U7_HR3_RT_SD_OPT_STS',
+ 'MUNDRA_U7_HR4_RT_SD_OPT_STS',
+ 'MUNDRA_U7_L9_LTRH_SOT_BLWR_OPT',
+ 'MUNDRA_U7_AT1_APH_A_SOT_BLWR_OPT',
+ 'MUNDRA_U7_AT2_APH_B_SOT_BLWR_OPT',
+ 'MUNDRA_U7_AT3_APH_A_UPR_SD_SOT_BLWR_OPT',
+ 'MUNDRA_U7_AT4_APH_B_UPR_SD_SOT_BLWR_OPT',
+ 'MUNDRA_U7_HL4_ECON_LT_SD_NEW_SOT_BLWR_OPT']
+
+PA_List = ['MUNDRA_U7_COAL_MILL_A_PRIM_AIR_FL_1', 'MUNDRA_U7_COAL_MILL_A_PRIM_AIR_FL_2', 'MUNDRA_U7_COAL_MILL_B_PRIM_AIR_FL_1',
+          'MUNDRA_U7_COAL_MILL_B_PRIM_AIR_FL_2', 'MUNDRA_U7_COAL_MILL_C_PRIM_AIR_FL_1', 'MUNDRA_U7_COAL_MILL_C_PRIM_AIR_FL_2',
+          'MUNDRA_U7_COAL_MILL_D_PRIM_AIR_FL_1', 'MUNDRA_U7_COAL_MILL_D_PRIM_AIR_FL_2', 'MUNDRA_U7_COAL_MILL_E_PRIM_AIR_FL_1',
+          'MUNDRA_U7_COAL_MILL_E_PRIM_AIR_FL_2', 'MUNDRA_U7_COAL_MILL_F_PRIM_AIR_FL_1', 'MUNDRA_U7_COAL_MILL_F_PRIM_AIR_FL_2']
+
+SA_List = ['MUNDRA_U7_APH_B_SCNDRY_AIR_FL_1', 'MUNDRA_U7_APH_B_SCNDRY_AIR_FL_2', 'MUNDRA_U7_FD_FAN_A_AIR_FL_1', 
+           'MUNDRA_U7_FD_FAN_A_AIR_FL_2']
+
+Column_Names = ['A1 FRONT SIDE SB OPERATING_1',
+ 'A2 FRONT SIDE SB OPERATING_1',
+ 'A3 FRONT SIDE SB OPERATING_1',
+ 'A4 FRONT SIDE SB OPERATING_1',
+ 'A5 RIGHT SIDE SB OPERATING_1',
+ 'A6 RIGHT SIDE SB OPERATING_1',
+ 'A7 RIGHT SIDE SB OPERATING_1',
+ 'A8 RIGHT SIDE SB OPERATING_1',
+ 'A9 REAR SIDE SB OPERATING_1',
+ 'A10 REAR SIDE SB OPERATING_1',
+ 'A11 REAR SIDE SB OPERATING_1',
+ 'A12 REAR SIDE SB OPERATING_1',
+ 'A13 LEFT SIDE SB OPERATING_1',
+ 'A14 LEFT SIDE SB OPERATING_1',
+ 'A15 LEFT SIDE SB OPERATING_1',
+ 'A16 LEFT SIDE SB OPERATING_1',
+ 'B1 FRONT SIDE SB OPERATING_1',
+ 'B2 FRONT SIDE SB OPERATING_1',
+ 'B3 FRONT SIDE SB OPERATING_1',
+ 'B4 FRONT SIDE SB OPERATING_1',
+ 'B5 RIGHT SIDE SB OPERATING_1',
+ 'B6 RIGHT SIDE SB OPERATING_1',
+ 'B7 RIGHT SIDE SB OPERATING_1',
+ 'B8 RIGHT SIDE SB OPERATING_1',
+ 'B9 REAR SIDE SB OPERATING_1',
+ 'B10 REAR SIDE SB OPERATING_1',
+ 'B11 REAR SIDE SB OPERATING_1',
+ 'B12 REAR SIDE SB OPERATING_1',
+ 'B13 LEFT SIDE SB OPERATING_1',
+ 'B14 LEFT SIDE SB OPERATING_1',
+ 'B15 LEFT SIDE SB OPERATING_1',
+ 'B16 LEFT SIDE SB OPERATING_1',
+ 'C1 FRONT SIDE SB OPERATING_1',
+ 'C2 FRONT SIDE SB OPERATING_1',
+ 'C3 FRONT SIDE SB OPERATING_1',
+ 'C4 FRONT SIDE SB OPERATING_1',
+ 'C5 RIGHT SIDE SB OPERATING_1',
+ 'C6 RIGHT SIDE SB OPERATING_1',
+ 'C7 RIGHT SIDE SB OPERATING_1',
+ 'C8 RIGHT SIDE SB OPERATING_1',
+ 'C9 REAR SIDE SB OPERATING_1',
+ 'C10 REAR SIDE SB OPERATING_1',
+ 'C11 REAR SIDE SB OPERATING_1',
+ 
+ 'C13 LEFT SIDE SB OPERATING_1',
+ 'C14 LEFT SIDE SB OPERATING_1',
+ 
+ 'C16 LEFT SIDE SB OPERATING_1',
+ 'D1 FRONT SIDE SB OPERATING_1',
+ 'D2 FRONT SIDE SB OPERATING_1',
+ 'D3 FRONT SIDE SB OPERATING_1',
+ 'D4 FRONT SIDE SB OPERATING_1',
+ 'D5 RIGHT SIDE SB OPERATING_1',
+ 'D6 RIGHT SIDE SB OPERATING_1',
+ 'D7 RIGHT SIDE SB OPERATING_1',
+ 'D8 RIGHT SIDE SB OPERATING_1',
+ 'D9 REAR SIDE SB OPERATING_1',
+ 'D10 REAR SIDE SB OPERATING_1',
+ 'D11 REAR SIDE SB OPERATING_1',
+ 'D12 REAR SIDE SB OPERATING_1',
+ 'D13 LEFT SIDE SB OPERATING_1',
+ 'D14 LEFT SIDE SB OPERATING_1',
+ 'D15 LEFT SIDE SB OPERATING_1',
+ 'D16 LEFT SIDE SB OPERATING_1',
+                
+ 'MUNDRA_U7_L1_RT_SD_RTRCT_SOT_BLWR_OPT_1',
+ 'MUNDRA_U7_L2_RT_SD_RTRCT_SOT_BLWR_OPT_1',
+ 'MUNDRA_U7_L3_RT_SD_RTRCT_SOT_BLWR_OPT_1',
+ 'MUNDRA_U7_L4_RT_SD_RTRCT_SOT_BLWR_OPT_1',
+ 'MUNDRA_U7_L5_RT_SD_RTRCT_SOT_BLWR_OPT_1',
+ 'MUNDRA_U7_L6_RT_SD_RTRCT_SOT_BLWR_OPT_1',
+ 'MUNDRA_U7_L7_RT_SD_RTRCT_SOT_BLWR_OPT_1',
+ 'MUNDRA_U7_L8_RT_SD_RTRCT_SOT_BLWR_OPT_1',
+ 'MUNDRA_U7_L10_RT_SD_RTRCT_SOT_BLWR_OPT_1',
+ 'MUNDRA_U7_L11_RT_SD_RTRCT_SOT_BLWR_OPT_1',
+ 'MUNDRA_U7_L12_RT_SD_RTRCT_SOT_BLWR_OPT_1',
+ 'MUNDRA_U7_L13_RT_SD_RTRCT_SOT_BLWR_OPT_1',
+ 'MUNDRA_U7_L14_RT_SD_RTRCT_SOT_BLWR_OPT_1',
+ 'MUNDRA_U7_L15_RT_SD_RTRCT_SOT_BLWR_OPT_1',
+ 'MUNDRA_U7_HL1_RT_SD_RTRCT_SOT_BLWR_OPT_1',
+ 'MUNDRA_U7_HL2_RT_SD_RTRCT_SOT_BLWR_OPT_1',
+ 'MUNDRA_U7_A5_RT_SD_SOT_BLWR_OPT_1',
+ 'MUNDRA_U7_A6_RT_SD_SOT_BLWR_OPT_1',
+ 'MUNDRA_U7_A7_RT_SD_SOT_BLWR_OPT_1',
+ 'MUNDRA_U7_A8_RT_SD_SOT_BLWR_OPT_1',
+ 'MUNDRA_U7_B5_RT_SD_SOT_BLWR_OPT_1',
+ 'MUNDRA_U7_B6_RT_SD_SOT_BLWR_OPT_1',
+ 'MUNDRA_U7_B7_RT_SD_SOT_BLWR_OPT_1',
+ 'MUNDRA_U7_B8_RT_SD_SOT_BLWR_OPT_1',
+ 'MUNDRA_U7_C5_RT_SD_SOT_BLWR_OPT_1',
+ 'MUNDRA_U7_C6_RT_SD_SOT_BLWR_OPT_1',
+ 'MUNDRA_U7_C7_RT_SD_SOT_BLWR_OPT_1',
+ 'MUNDRA_U7_C8_RT_SD_SOT_BLWR_OPT_1',
+ 'MUNDRA_U7_D5_RT_SD_SOT_BLWR_OPT_1',
+ 'MUNDRA_U7_D6_RT_SD_SOT_BLWR_OPT_1',
+ 'MUNDRA_U7_D7_RT_SD_SOT_BLWR_OPT_1',
+ 'MUNDRA_U7_D8_RT_SD_SOT_BLWR_OPT_1',
+ 'MUNDRA_U7_A9_RR_SD_SOT_BLWR_OPT_1',
+ 'MUNDRA_U7_A10_RR_SD_SOT_BLWR_OPT_1',
+ 'MUNDRA_U7_A11_RR_SD_SOT_BLWR_OPT_1',
+ 'MUNDRA_U7_A12_RR_SD_SOT_BLWR_OPT_1',
+ 'MUNDRA_U7_B9_RR_SD_SOT_BLWR_OPT_1',
+ 'MUNDRA_U7_B10_RR_SD_SOT_BLWR_OPT_1',
+ 'MUNDRA_U7_B11_RR_SD_SOT_BLWR_OPT_1',
+ 'MUNDRA_U7_B12_RR_SD_SOT_BLWR_OPT_1',
+ 'MUNDRA_U7_C9_RR_SD_SOT_BLWR_OPT_1',
+ 'MUNDRA_U7_C10_RR_SD_SOT_BLWR_OPT_1',
+ 'MUNDRA_U7_C11_RR_SD_SOT_BLWR_OPT_1',
+ 'MUNDRA_U7_D9_RR_SD_SOT_BLWR_OPT_1',
+ 'MUNDRA_U7_D10_RR_SD_SOT_BLWR_OPT_1',
+ 'MUNDRA_U7_D11_RR_SD_SOT_BLWR_OPT_1',
+ 'MUNDRA_U7_D12_RR_SD_SOT_BLWR_OPT_1',
+ 'MUNDRA_U7_R1_RT_SD_RTRCT_SOT_BLWR_OPT_1',
+ 'MUNDRA_U7_R2_RT_SD_RTRCT_SOT_BLWR_OPT_1',
+ 'MUNDRA_U7_R3_RT_SD_RTRCT_SOT_BLWR_OPT_1',
+ 'MUNDRA_U7_R4_RT_SD_RTRCT_SOT_BLWR_OPT_1',
+ 'MUNDRA_U7_R5_RT_SD_RTRCT_SOT_BLWR_OPT_1',
+ 'MUNDRA_U7_R1_RT_SD_RTRCT_SOT_BLWR_OPT_2_1',
+ 'MUNDRA_U7_R7_RT_SD_RTRCT_SOT_BLWR_OPT_1',
+ 'MUNDRA_U7_R8_RT_SD_RTRCT_SOT_BLWR_OPT_1',
+ 'MUNDRA_U7_R9_RT_SD_RTRCT_SOT_BLWR_OPT_1',
+ 'MUNDRA_U7_R10_RT_SD_RTRCT_SOT_BLWR_OPT_1',
+ 'MUNDRA_U7_R11_RT_SD_RTRCT_SOT_BLWR_OPT_1',
+ 'MUNDRA_U7_R12_RT_SD_RTRCT_SOT_BLWR_OPT_1',
+ 'MUNDRA_U7_R13_RT_SD_RTRCT_SOT_BLWR_OPT_1',
+ 'MUNDRA_U7_R14_RT_SD_RTRCT_SOT_BLWR_OPT_1',
+ 'MUNDRA_U7_R15_RT_SD_RTRCT_SOT_BLWR_OPT_1',
+ 'MUNDRA_U7_HR1_RT_SD_RTRCT_SOT_BLWR_OPT_1',
+ 'MUNDRA_U7_HR2_RT_SD_RTRCT_SOT_BLWR_OPT_1',
+ 'MUNDRA_U7_HL3_RT_SD_OPT_STS_1',
+ 'MUNDRA_U7_HR3_RT_SD_OPT_STS_1',
+ 'MUNDRA_U7_HR4_RT_SD_OPT_STS_1',
+ 'MUNDRA_U7_L9_LTRH_SOT_BLWR_OPT_1',
+ 'MUNDRA_U7_AT1_APH_A_SOT_BLWR_OPT_1',
+ 'MUNDRA_U7_AT2_APH_B_SOT_BLWR_OPT_1',
+ 'MUNDRA_U7_AT3_APH_A_UPR_SD_SOT_BLWR_OPT_1',
+ 'MUNDRA_U7_AT4_APH_B_UPR_SD_SOT_BLWR_OPT_1',
+ 'MUNDRA_U7_HL4_ECON_LT_SD_NEW_SOT_BLWR_OPT_1']
+
+
+ 
+
+column_names_A = ['CF_A1','CF_A2','CF_A3','CF_A4','CF_A5','CF_A6','CF_A7','CF_A8','CF_A9','CF_A10','CF_A11','CF_A12','CF_A13','CF_A14','CF_A15','CF_A16']
+column_names_B = ['CF_B1','CF_B2','CF_B3','CF_B4','CF_B5','CF_B6','CF_B7','CF_B8','CF_B9','CF_B10','CF_B11','CF_B12','CF_B13','CF_B14','CF_B15','CF_B16']
+column_names_C = ['CF_C1','CF_C2','CF_C3','CF_C4','CF_C5','CF_C6','CF_C7','CF_C8','CF_C9','CF_C10','CF_C11','CF_C12','CF_C13','CF_C14','CF_C15','CF_C16']
+column_names_D = ['CF_D1','CF_D2','CF_D3','CF_D4','CF_D5','CF_D6','CF_D7','CF_D8','CF_D9','CF_D10','CF_D11','CF_D12','CF_D13','CF_D14','CF_D15','CF_D16']
+
+column_names_PSH_L = ['CF_L1']
+column_names_PSH_R = ['CF_R1']
+
+column_names_GN_L = ['CF_L5']
+column_names_GN_R = ['CF_R5']
+
+column_names_LTRH_L = ['CF_L8', 'CF_L9', 'CF_L12', 'CF_L13', 'CF_L14', 'CF_L15']
+column_names_LTRH_R = ['CF_R8', 'CF_R9', 'CF_R12', 'CF_R13', 'CF_R14', 'CF_R15']
+
+column_names_LTSH_L = ['CF_L10', 'CF_L11']
+column_names_LTSH_R = ['CF_R10', 'CF_R11']
+
+column_names_FSH_L = ['CF_L2', 'CF_L3', 'CF_L4']
+column_names_FSH_R = ['CF_R2', 'CF_R3', 'CF_R4']
+
+column_names_FRH_L = ['CF_L6', 'CF_L7']
+column_names_FRH_R = ['CF_R6', 'CF_R7']
+
+column_names_ECO_L = ['CF_HL1', 'CF_HL2', 'CF_HL3', 'CF_HL4']
+column_names_ECO_R = ['CF_HR1', 'CF_HR2', 'CF_HR3', 'CF_HR4']
+
+column_names_APH_L = ['CF_AT1', 'CF_AT3']
+column_names_APH_R = ['CF_AT2', 'CF_AT4']
+
+dummy_columns = ['comb_001011', 'comb_001101', 'comb_001110', 
+    'comb_001111', 'comb_010110', 'comb_010111', 'comb_011010', 'comb_011011', 'comb_011100', 'comb_011101', 'comb_011110', 
+    'comb_011111', 'comb_101011', 'comb_101101', 'comb_101110', 'comb_101111', 'comb_110011', 'comb_110100', 'comb_110101', 
+    'comb_110110', 'comb_110111', 'comb_111000', 'comb_111010', 'comb_111011', 'comb_111100', 'comb_111101', 'comb_111110', 
+    'comb_111111', 'cluster_0','cluster_1','cluster_2']
+
+
+model_filename = 'rf_8.pk1'
+loaded_rfr = joblib.load(model_filename)
+
+model_filename = 'cluster.pk1'
+loaded_cluster = joblib.load(model_filename)
+
+st.title("Predictive Model Results")
+
+while True:
+    try:
+        if 'enumerate' in globals():
+            del enumerate
+        timeout_duration = 60*25
+    
+
+        
+        DF_New_Model = pd.read_csv("Comb_Test_PI_7.csv")
+
+        DF_New_Model.rename(columns = {'MUNDRA_U7_TOT_COAL_FL' : 'FUEL FLOW',
+            'MUNDRA_U7_TOT_AIR_FL' : 'AIR FLOW',
+            'MUNDRA_U7_ECON_FD_WTR_INLT_FL_1' : 'Economizer_Inlet_Feed_Water_Flow_1',
+            'MUNDRA_U7_ECON_FD_WTR_INLT_FL_2' : 'Economizer_Inlet_Feed_Water_Flow_2',
+            'MUNDRA_U7_LD_2' : 'LOAD',
+            'MUNDRA_U7_FURN_TEMP_DMPR_PSN_LHS_1' : 'Left_Side_Furnace_Temperature_Damper_1_Position',
+            'MUNDRA_U7_FURN_TEMP_DMPR_PSN_LHS_3' : 'Left_Side_Furnace_Temperature_Damper_3_Position',
+            'MUNDRA_U7_FURN_TEMP_DMPR_PSN_RHS_1' : 'Right_Side_Furnace_Temperature_Damper_1_Position',
+            'MUNDRA_U7_FURN_TEMP_DMPR_PSN_RHS_2' : 'Right_Side_Furnace_Temperature_Damper_2_Position',
+            'MUNDRA_U7_FURN_TEMP_DMPR_PSN_RHS_3' : 'Right_Side_Furnace_Temperature_Damper_3_Position',
+            'MUNDRA_U7_AA_COR_1_LYR_SCNDRY_AIR_DMPR' : 'LAYR  AA1 SA DAMPER  POSITION   ',
+            'MUNDRA_U7_AA_COR_2_LYR_SCNDRY_AIR_DMPR' : 'LAYR  AA2 SA DAMPER  POSITION   ',
+            'MUNDRA_U7_AA_COR_3_LYR_SCNDRY_AIR_DMPR' : 'LAYR  AA3 SA DAMPER  POSITION   ',
+            'MUNDRA_U7_AA_COR_4_LYR_SCNDRY_AIR_DMPR' : 'LAYR  AA4 SA DAMPER  POSITION   ',
+            'MUNDRA_U7_AB_COR_1_LYR_SCNDRY_AIR_DMPR' : 'LAYR  AB1 SA DAMPER  POSITION   ',
+            'MUNDRA_U7_AB_COR_2_LYR_SCNDRY_AIR_DMPR' : 'LAYR  AB2 SA DAMPER  POSITION   ',
+            'MUNDRA_U7_AB_COR_3_LYR_SCNDRY_AIR_DMPR' : 'LAYR  AB3 SA DAMPER  POSITION   ',
+            'MUNDRA_U7_AB_COR_4_LYR_SCNDRY_AIR_DMPR' : 'LAYR  AB4 SA DAMPER  POSITION   ',
+            'MUNDRA_U7_A_COR_1_LYR_SCNDRY_AIR_DMPR' : 'LAYR  A1 SA DAMPER  POSITION   ',
+            'MUNDRA_U7_A_COR_2_LYR_SCNDRY_AIR_DMPR' : 'LAYR  A2 SA DAMPER  POSITION   ',
+            'MUNDRA_U7_A_COR_3_LYR_SCNDRY_AIR_DMPR' : 'LAYR  A3 SA DAMPER  POSITION   ',
+            'MUNDRA_U7_A_COR_4_LYR_SCNDRY_AIR_DMPR' : 'LAYR  A4 SA DAMPER  POSITION   ',
+            'MUNDRA_U7_BC_COR_1_LYR_SCNDRY_AIR_DMPR' : 'LAYR  BC1 SA DAMPER  POSITION   ',
+            'MUNDRA_U7_BC_COR_2_LYR_SCNDRY_AIR_DMPR' : 'LAYR  BC2 SA DAMPER  POSITION   ',
+            'MUNDRA_U7_BC_COR_3_LYR_SCNDRY_AIR_DMPR' : 'LAYR  BC3 SA DAMPER  POSITION   ',
+            'MUNDRA_U7_BC_COR_4_LYR_SCNDRY_AIR_DMPR' : 'LAYR  BC4 SA DAMPER  POSITION   ',
+            'MUNDRA_U7_B_COR_1_LYR_SCNDRY_AIR_DMPR' : 'LAYR  B1 SA DAMPER  POSITION   ',
+            'MUNDRA_U7_B_COR_2_LYR_SCNDRY_AIR_DMPR' : 'LAYR  B2 SA DAMPER  POSITION   ',
+            'MUNDRA_U7_B_COR_3_LYR_SCNDRY_AIR_DMPR' : 'LAYR  B3 SA DAMPER  POSITION   ',
+            'MUNDRA_U7_B_COR_4_LYR_SCNDRY_AIR_DMPR' : 'LAYR  B4 SA DAMPER  POSITION   ',
+            'MUNDRA_U7_CC_COR_1_LYR_SCNDRY_AIR_DMPR' : 'LAYR  CC1 SA DAMPER  POSITION   ',
+            'MUNDRA_U7_CC_COR_2_LYR_SCNDRY_AIR_DMPR' : 'LAYR  CC2 SA DAMPER  POSITION   ',
+            'MUNDRA_U7_CC_COR_3_LYR_SCNDRY_AIR_DMPR' : 'LAYR  CC3 SA DAMPER  POSITION   ',
+            'MUNDRA_U7_CC_COR_4_LYR_SCNDRY_AIR_DMPR' : 'LAYR  CC4 SA DAMPER  POSITION   ',
+            'MUNDRA_U7_C_COR_1_LYR_SCNDRY_AIR_DMPR' : 'LAYR  C1 SA DAMPER  POSITION   ',
+            'MUNDRA_U7_C_COR_2_LYR_SCNDRY_AIR_DMPR' : 'LAYR  C2 SA DAMPER  POSITION   ',
+            'MUNDRA_U7_C_COR_3_LYR_SCNDRY_AIR_DMPR' : 'LAYR  C3 SA DAMPER  POSITION   ',
+            'MUNDRA_U7_C_COR_4_LYR_SCNDRY_AIR_DMPR' : 'LAYR  C4 SA DAMPER  POSITION   ',
+            'MUNDRA_U7_DD_COR_1_LYR_SCNDRY_AIR_DMPR' : 'LAYR  DD1 SA DAMPER  POSITION   ',
+            'MUNDRA_U7_DD_COR_2_LYR_SCNDRY_AIR_DMPR' : 'LAYR  DD2 SA DAMPER  POSITION   ',
+            'MUNDRA_U7_DD_COR_3_LYR_SCNDRY_AIR_DMPR' : 'LAYR  DD3 SA DAMPER  POSITION   ',
+            'MUNDRA_U7_DD_COR_4_LYR_SCNDRY_AIR_DMPR' : 'LAYR  DD4 SA DAMPER  POSITION   ',
+            'MUNDRA_U7_DE_COR_1_LYR_SCNDRY_AIR_DMPR' : 'LAYR  DE1 SA DAMPER  POSITION   ',
+            'MUNDRA_U7_DE_COR_2_LYR_SCNDRY_AIR_DMPR' : 'LAYR  DE2 SA DAMPER  POSITION   ',
+            'MUNDRA_U7_DE_COR_3_LYR_SCNDRY_AIR_DMPR' : 'LAYR  DE3 SA DAMPER  POSITION   ',
+            'MUNDRA_U7_DE_COR_4_LYR_SCNDRY_AIR_DMPR' : 'LAYR  DE4 SA DAMPER  POSITION   ',
+            'MUNDRA_U7_D_COR_1_LYR_SCNDRY_AIR_DMPR' : 'LAYR  D1 SA DAMPER  POSITION   ',
+            'MUNDRA_U7_D_COR_2_LYR_SCNDRY_AIR_DMPR' : 'LAYR  D2 SA DAMPER  POSITION   ',
+            'MUNDRA_U7_D_COR_3_LYR_SCNDRY_AIR_DMPR' : 'LAYR  D3 SA DAMPER  POSITION   ',
+            'MUNDRA_U7_D_COR_4_LYR_SCNDRY_AIR_DMPR' : 'LAYR  D4 SA DAMPER  POSITION   ',
+            'MUNDRA_U7_EF_COR_1_LYR_SCNDRY_AIR_DMPR' : 'LAYR  EF1 SA DAMPER  POSITION   ',   
+            'MUNDRA_U7_EF_COR_2_LYR_SCNDRY_AIR_DMPR' : 'LAYR  EF2 SA DAMPER  POSITION   ',
+            'MUNDRA_U7_EF_COR_3_LYR_SCNDRY_AIR_DMPR' : 'LAYR  EF3 SA DAMPER  POSITION   ', 
+            'MUNDRA_U7_EF_COR_4_LYR_SCNDRY_AIR_DMPR' : 'LAYR  EF4 SA DAMPER  POSITION   ',   
+            'MUNDRA_U7_E_COR_1_LYR_SCNDRY_AIR_DMPR' : 'LAYR  E1 SA DAMPER  POSITION   ',
+            'MUNDRA_U7_E_COR_2_LYR_SCNDRY_AIR_DMPR' : 'LAYR  E2 SA DAMPER  POSITION   ',
+            'MUNDRA_U7_E_COR_3_LYR_SCNDRY_AIR_DMPR' : 'LAYR  E3 SA DAMPER  POSITION   ',
+            'MUNDRA_U7_E_COR_4_LYR_SCNDRY_AIR_DMPR' : 'LAYR  E4 SA DAMPER  POSITION   ',
+            'MUNDRA_U7_FF_COR_1_LYR_SCNDRY_AIR_DMPR' : 'LAYR  FF1 SA DAMPER  POSITION   ',
+            'MUNDRA_U7_FF_COR_2_LYR_SCNDRY_AIR_DMPR' : 'LAYR  FF2 SA DAMPER  POSITION   ',
+            'MUNDRA_U7_FF_COR_3_LYR_SCNDRY_AIR_DMPR' : 'LAYR  FF3 SA DAMPER  POSITION   ',
+            'MUNDRA_U7_FF_COR_4_LYR_SCNDRY_AIR_DMPR' : 'LAYR  FF4 SA DAMPER  POSITION   ',
+            'MUNDRA_U7_F_COR_1_LYR_SCNDRY_AIR_DMPR' : 'LAYR  F1 SA DAMPER  POSITION   ',
+            'MUNDRA_U7_F_COR_2_LYR_SCNDRY_AIR_DMPR' : 'LAYR  F2 SA DAMPER  POSITION   ',
+            'MUNDRA_U7_F_COR_3_LYR_SCNDRY_AIR_DMPR' : 'LAYR  F3 SA DAMPER  POSITION   ',
+            'MUNDRA_U7_F_COR_4_LYR_SCNDRY_AIR_DMPR' : 'LAYR  F4 SA DAMPER  POSITION   ',
+            'MUNDRA_U7_G_COR_1_LYR_SCNDRY_AIR_DMPR' : 'LAYR  G1 SA DAMPER  POSITION   ',
+            'MUNDRA_U7_G_COR_2_LYR_SCNDRY_AIR_DMPR' : 'LAYR  G2 SA DAMPER  POSITION   ',
+            'MUNDRA_U7_G_COR_3_LYR_SCNDRY_AIR_DMPR' : 'LAYR  G3 SA DAMPER  POSITION   ',
+            'MUNDRA_U7_G_COR_4_LYR_SCNDRY_AIR_DMPR' : 'LAYR  G4 SA DAMPER  POSITION   ',
+            'MUNDRA_U7_H_COR_1_LYR_SCNDRY_AIR_DMPR' : 'LAYR  H1 SA DAMPER  POSITION   ',
+            'MUNDRA_U7_H_COR_2_LYR_SCNDRY_AIR_DMPR' : 'LAYR  H2 SA DAMPER  POSITION   ',
+            'MUNDRA_U7_H_COR_3_LYR_SCNDRY_AIR_DMPR' : 'LAYR  H3 SA DAMPER  POSITION   ',
+            'MUNDRA_U7_H_COR_4_LYR_SCNDRY_AIR_DMPR' : 'LAYR  H4 SA DAMPER  POSITION   ',
+            'MUNDRA_U7_I_COR_1_LYR_SCNDRY_AIR_DMPR' : 'LAYR  I1 SA DAMPER  POSITION  ',
+            'MUNDRA_U7_I_COR_2_LYR_SCNDRY_AIR_DMPR' : 'LAYR  I2 SA DAMPER  POSITION  ',
+            'MUNDRA_U7_I_COR_3_LYR_SCNDRY_AIR_DMPR' : 'LAYR  I3 SA DAMPER  POSITION  ',
+            'MUNDRA_U7_I_COR_4_LYR_SCNDRY_AIR_DMPR' : 'LAYR  I4 SA DAMPER  POSITION  ',
+            'MUNDRA_U7_J_COR_1_LYR_SCNDRY_AIR_DMPR' : 'LAYR  J1 SA DAMPER  POSITION   ',
+            'MUNDRA_U7_J_COR_2_LYR_SCNDRY_AIR_DMPR' : 'LAYR  J2 SA DAMPER  POSITION   ',
+            'MUNDRA_U7_J_COR_3_LYR_SCNDRY_AIR_DMPR' : 'LAYR  J3 SA DAMPER  POSITION   ',
+            'MUNDRA_U7_J_COR_4_LYR_SCNDRY_AIR_DMPR' : 'LAYR  J4 SA DAMPER  POSITION   ',
+            'MUNDRA_U7_OA_COR_1_LYR_SCNDRY_AIR_DMPR' : 'LAYR  OA1 SA DAMPER  POSITION   ',
+            'MUNDRA_U7_OA_COR_2_LYR_SCNDRY_AIR_DMPR' : 'LAYR  OA2 SA DAMPER  POSITION   ',
+            'MUNDRA_U7_OA_COR_3_LYR_SCNDRY_AIR_DMPR' : 'LAYR  OA3 SA DAMPER  POSITION   ',
+            'MUNDRA_U7_OA_COR_4_LYR_SCNDRY_AIR_DMPR' : 'LAYR  OA4 SA DAMPER  POSITION   ',
+            'MUNDRA_U7_OB_COR_1_LYR_SCNDRY_AIR_DMPR' : 'LAYR  OB1 SA DAMPER  POSITION   ',
+            'MUNDRA_U7_OB_COR_2_LYR_SCNDRY_AIR_DMPR' : 'LAYR  OB2 SA DAMPER  POSITION   ',
+            'MUNDRA_U7_OB_COR_3_LYR_SCNDRY_AIR_DMPR' : 'LAYR  OB3 SA DAMPER  POSITION   ',
+            'MUNDRA_U7_OB_COR_4_LYR_SCNDRY_AIR_DMPR' : 'LAYR  OB4 SA DAMPER  POSITION   ',
+            'MUNDRA_U7_OC_COR_1_LYR_SCNDRY_AIR_DMPR' : 'LAYR  OC1 SA DAMPER  POSITION   ',
+            'MUNDRA_U7_OC_COR_2_LYR_SCNDRY_AIR_DMPR' : 'LAYR  OC2 SA DAMPER  POSITION   ',
+            'MUNDRA_U7_OC_COR_3_LYR_SCNDRY_AIR_DMPR' : 'LAYR  OC3 SA DAMPER  POSITION   ',
+            'MUNDRA_U7_OC_COR_4_LYR_SCNDRY_AIR_DMPR' : 'LAYR  OC4 SA DAMPER  POSITION   ',
+            'MUNDRA_U7_OD_COR_1_LYR_SCNDRY_AIR_DMPR' : 'LAYR  OD1 SA DAMPER  POSITION   ',
+            'MUNDRA_U7_OD_COR_2_LYR_SCNDRY_AIR_DMPR' : 'LAYR  OD2 SA DAMPER  POSITION   ',
+            'MUNDRA_U7_OD_COR_3_LYR_SCNDRY_AIR_DMPR' : 'LAYR  OD3 SA DAMPER  POSITION   ',
+            'MUNDRA_U7_OD_COR_4_LYR_SCNDRY_AIR_DMPR' : 'LAYR  OD4 SA DAMPER  POSITION   ',
+            'MUNDRA_U7_COAL_MILL_A_OTLT_PRESS' : 'MILL A OUTL MIXTURE PRESS',
+            'MUNDRA_U7_COAL_MILL_B_OTLT_PRESS' : 'MILL B OUTL MIXTURE PRESS',
+            'MUNDRA_U7_COAL_MILL_C_OTLT_PRESS' : 'MILL C OUTL MIXTURE PRESS',
+            'MUNDRA_U7_COAL_MILL_D_OTLT_PRESS' : 'MILL D OUTL MIXTURE PRESS',
+            'MUNDRA_U7_COAL_MILL_E_OTLT_PRESS' : 'MILL E OUTL MIXTURE PRESS',
+            'MUNDRA_U7_COAL_MILL_F_OTLT_PRESS' : 'MILL F OUTL MIXTURE PRESS',
+            'MUNDRA_U7_COAL_FDR_A_COAL_FL_1' : 'COAL FEEDER A FEEDRATE',
+            'MUNDRA_U7_COAL_FDR_B_COAL_FL_1' : 'COAL FEEDER B FEEDRATE',
+            'MUNDRA_U7_COAL_FDR_C_COAL_FL_1' : 'COAL FEEDER C FEEDRATE',
+            'MUNDRA_U7_COAL_FDR_D_COAL_FL_1' : 'COAL FEEDER D FEEDRATE',
+            'MUNDRA_U7_COAL_FDR_E_COAL_FL_1' : 'COAL FEEDER E FEEDRATE',
+            'MUNDRA_U7_COAL_FDR_F_COAL_FL_1' : 'COAL FEEDER F FEEDRATE',
+            'MUNDRA_U7_OHD_OF_SPR_HT' : 'OHDR',                          
+            'End_Time' : 'End Time'}, inplace = True)
+
+
+        DF_New_Model['End Time'] = pd.to_datetime(DF_New_Model['End Time'])
+        DF_New_Model['End Time'] = DF_New_Model['End Time'].dt.round('T')
+        DF_New_Model = DF_New_Model.sort_values(by = 'End Time')
+        DF_New_Model = DF_New_Model.drop_duplicates(subset = 'End Time', keep='first')
+
+
+        DF_New_Model.loc[:, DF_New_Model.columns != 'End Time'] = DF_New_Model.loc[:, DF_New_Model.columns != 'End Time'].applymap(lambda x: pd.to_numeric(x, errors='coerce'))
+        # Convert all columns except 'Time' to float
+        DF_New_Model.loc[:, DF_New_Model.columns != 'End Time'] = DF_New_Model.loc[:, DF_New_Model.columns != 'End Time'].astype(float)
+        # Replace NaN with 0
+        DF_New_Model.loc[:, DF_New_Model.columns != 'End Time'] = DF_New_Model.loc[:, DF_New_Model.columns != 'End Time'].fillna(0)
+        DF_New_Model.set_index('End Time', inplace = True)
+        DF_New_Model = DF_New_Model.resample('5T').mean()    
+        DF_New_Model.reset_index(inplace = True)
+
+
+
+        DF_New_Model['APH_INLET_AVG_FLUE_TEMP'] = (DF_New_Model['MUNDRA_U7_APH_A_INLT_FLUE_GAS_TEMP_1'] + DF_New_Model['MUNDRA_U7_APH_B_INLT_FLUE_GAS_TEMP_1'])/2
+
+
+        DF_New_Model[ 'LAYR  J1 '] = (DF_New_Model[ 'LAYR  J1 SA DAMPER  POSITION   '] + DF_New_Model[ 'LAYR  J2 SA DAMPER  POSITION   ']+DF_New_Model[ 'LAYR  J3 SA DAMPER  POSITION   '] + DF_New_Model[ 'LAYR  J4 SA DAMPER  POSITION   '])/4
+        DF_New_Model[ 'LAYR  I1 ']=(DF_New_Model[ 'LAYR  I1 SA DAMPER  POSITION  ']+DF_New_Model[ 'LAYR  I2 SA DAMPER  POSITION  ']+DF_New_Model[ 'LAYR  I3 SA DAMPER  POSITION  '] + DF_New_Model[ 'LAYR  I4 SA DAMPER  POSITION  '])/4
+        DF_New_Model[ 'LAYR  H1 ']=(DF_New_Model[ 'LAYR  H1 SA DAMPER  POSITION   ']+DF_New_Model[ 'LAYR  H2 SA DAMPER  POSITION   ']+DF_New_Model[ 'LAYR  H3 SA DAMPER  POSITION   '] + DF_New_Model[ 'LAYR  H4 SA DAMPER  POSITION   '])/4
+        DF_New_Model[ 'LAYR  G1 ']=(DF_New_Model[ 'LAYR  G1 SA DAMPER  POSITION   ']+DF_New_Model[ 'LAYR  G2 SA DAMPER  POSITION   ']+DF_New_Model[ 'LAYR  G3 SA DAMPER  POSITION   '] + DF_New_Model[ 'LAYR  G4 SA DAMPER  POSITION   '])/4
+        DF_New_Model[ 'LAYR  FF1 ']=(DF_New_Model[ 'LAYR  FF1 SA DAMPER  POSITION   ']+DF_New_Model[ 'LAYR  FF2 SA DAMPER  POSITION   ']+DF_New_Model[ 'LAYR  FF3 SA DAMPER  POSITION   '] + DF_New_Model[ 'LAYR  FF4 SA DAMPER  POSITION   '])/4
+        DF_New_Model[ 'LAYR  F1 ']=(DF_New_Model[ 'LAYR  F1 SA DAMPER  POSITION   ']+DF_New_Model[ 'LAYR  F2 SA DAMPER  POSITION   ']+DF_New_Model[ 'LAYR  F3 SA DAMPER  POSITION   '] + DF_New_Model[ 'LAYR  F4 SA DAMPER  POSITION   '])/4
+        DF_New_Model[ 'LAYR  EF1 ']=(DF_New_Model[ 'LAYR  EF1 SA DAMPER  POSITION   ']+DF_New_Model[ 'LAYR  EF2 SA DAMPER  POSITION   ']+DF_New_Model[ 'LAYR  EF3 SA DAMPER  POSITION   '] + DF_New_Model[ 'LAYR  EF4 SA DAMPER  POSITION   '])/4
+        DF_New_Model[ 'LAYR  OD1 ']=(DF_New_Model[ 'LAYR  OD1 SA DAMPER  POSITION   ']+DF_New_Model[ 'LAYR  OD2 SA DAMPER  POSITION   ']+DF_New_Model[ 'LAYR  OD3 SA DAMPER  POSITION   '] + DF_New_Model[ 'LAYR  OD4 SA DAMPER  POSITION   '])/4
+        DF_New_Model[ 'LAYR  E1 ']=(DF_New_Model[ 'LAYR  E1 SA DAMPER  POSITION   ']+DF_New_Model[ 'LAYR  E2 SA DAMPER  POSITION   ']+DF_New_Model[ 'LAYR  E3 SA DAMPER  POSITION   '] + DF_New_Model[ 'LAYR  E4 SA DAMPER  POSITION   '])/4
+        DF_New_Model[ 'LAYR  DE1 ']=(DF_New_Model[ 'LAYR  DE1 SA DAMPER  POSITION   ']+DF_New_Model[ 'LAYR  DE2 SA DAMPER  POSITION   ']+DF_New_Model[ 'LAYR  DE3 SA DAMPER  POSITION   '] + DF_New_Model[ 'LAYR  DE4 SA DAMPER  POSITION   '])/4
+        DF_New_Model[ 'LAYR  OC1 ']=(DF_New_Model[ 'LAYR  OC1 SA DAMPER  POSITION   ']+DF_New_Model[ 'LAYR  OC2 SA DAMPER  POSITION   ']+DF_New_Model[ 'LAYR  OC3 SA DAMPER  POSITION   '] + DF_New_Model[ 'LAYR  OC4 SA DAMPER  POSITION   '])/4
+        DF_New_Model[ 'LAYR  D1 ']=(DF_New_Model[ 'LAYR  D1 SA DAMPER  POSITION   ']+DF_New_Model[ 'LAYR  D2 SA DAMPER  POSITION   ']+DF_New_Model[ 'LAYR  D3 SA DAMPER  POSITION   '] + DF_New_Model[ 'LAYR  D4 SA DAMPER  POSITION   '])/4
+        DF_New_Model[ 'LAYR  DD1 ']=(DF_New_Model[ 'LAYR  DD1 SA DAMPER  POSITION   ']+DF_New_Model[ 'LAYR  DD2 SA DAMPER  POSITION   ']+DF_New_Model[ 'LAYR  DD3 SA DAMPER  POSITION   '] + DF_New_Model[ 'LAYR  DD4 SA DAMPER  POSITION   '])/4
+        DF_New_Model[ 'LAYR  CC1 ']=(DF_New_Model[ 'LAYR  CC1 SA DAMPER  POSITION   ']+DF_New_Model[ 'LAYR  CC2 SA DAMPER  POSITION   ']+DF_New_Model[ 'LAYR  CC3 SA DAMPER  POSITION   '] + DF_New_Model[ 'LAYR  CC4 SA DAMPER  POSITION   '])/4
+        DF_New_Model[ 'LAYR  C1 ']=(DF_New_Model[ 'LAYR  C1 SA DAMPER  POSITION   ']+DF_New_Model[ 'LAYR  C2 SA DAMPER  POSITION   ']+DF_New_Model[ 'LAYR  C3 SA DAMPER  POSITION   '] + DF_New_Model[ 'LAYR  C4 SA DAMPER  POSITION   '])/4
+        DF_New_Model[ 'LAYR  BC1 ']=(DF_New_Model[ 'LAYR  BC1 SA DAMPER  POSITION   ']+DF_New_Model[ 'LAYR  BC2 SA DAMPER  POSITION   ']+DF_New_Model[ 'LAYR  BC3 SA DAMPER  POSITION   '] + DF_New_Model[ 'LAYR  BC4 SA DAMPER  POSITION   '])/4
+        DF_New_Model[ 'LAYR  OB1 ']=(DF_New_Model[ 'LAYR  OB1 SA DAMPER  POSITION   ']+DF_New_Model[ 'LAYR  OB2 SA DAMPER  POSITION   ']+DF_New_Model[ 'LAYR  OB3 SA DAMPER  POSITION   '] + DF_New_Model[ 'LAYR  OB4 SA DAMPER  POSITION   '])/4
+        DF_New_Model[ 'LAYR  B1 ']=(DF_New_Model[ 'LAYR  B1 SA DAMPER  POSITION   ']+DF_New_Model[ 'LAYR  B2 SA DAMPER  POSITION   ']+DF_New_Model[ 'LAYR  B3 SA DAMPER  POSITION   '] + DF_New_Model[ 'LAYR  B4 SA DAMPER  POSITION   '])/4
+        DF_New_Model[ 'LAYR  AB1 ']=(DF_New_Model[ 'LAYR  AB1 SA DAMPER  POSITION   ']+DF_New_Model[ 'LAYR  AB2 SA DAMPER  POSITION   ']+DF_New_Model[ 'LAYR  AB3 SA DAMPER  POSITION   '] + DF_New_Model[ 'LAYR  AB4 SA DAMPER  POSITION   '])/4
+        DF_New_Model[ 'LAYR  OA1 ']=(DF_New_Model[ 'LAYR  OA1 SA DAMPER  POSITION   ']+DF_New_Model[ 'LAYR  OA2 SA DAMPER  POSITION   ']+DF_New_Model[ 'LAYR  OA3 SA DAMPER  POSITION   '] + DF_New_Model[ 'LAYR  OA4 SA DAMPER  POSITION   '])/4
+        DF_New_Model[ 'LAYR  A1 ']=(DF_New_Model[ 'LAYR  A1 SA DAMPER  POSITION   ']+DF_New_Model[ 'LAYR  A2 SA DAMPER  POSITION   ']+DF_New_Model[ 'LAYR  A3 SA DAMPER  POSITION   '] + DF_New_Model[ 'LAYR  A4 SA DAMPER  POSITION   '])/4
+        DF_New_Model[ 'LAYR  AA1 ']=(DF_New_Model[ 'LAYR  AA1 SA DAMPER  POSITION   ']+DF_New_Model[ 'LAYR  AA2 SA DAMPER  POSITION   ']+DF_New_Model[ 'LAYR  AA3 SA DAMPER  POSITION   '] + DF_New_Model[ 'LAYR  AA4 SA DAMPER  POSITION   '])/4
+        DF_New_Model['COAL FEEDER A FEEDRATE'] = DF_New_Model['COAL FEEDER A FEEDRATE'].apply(lambda x: x if x >= 20 else 0)
+        DF_New_Model['COAL FEEDER B FEEDRATE'] = DF_New_Model['COAL FEEDER B FEEDRATE'].apply(lambda x: x if x >= 20 else 0)
+        DF_New_Model['COAL FEEDER C FEEDRATE'] = DF_New_Model['COAL FEEDER C FEEDRATE'].apply(lambda x: x if x >= 20 else 0)
+        DF_New_Model['COAL FEEDER D FEEDRATE'] = DF_New_Model['COAL FEEDER D FEEDRATE'].apply(lambda x: x if x >= 20 else 0)
+        DF_New_Model['COAL FEEDER E FEEDRATE'] = DF_New_Model['COAL FEEDER E FEEDRATE'].apply(lambda x: x if x >= 20 else 0)
+        DF_New_Model['COAL FEEDER F FEEDRATE'] = DF_New_Model['COAL FEEDER F FEEDRATE'].apply(lambda x: x if x >= 20 else 0)
+
+        DF_New_Model['SEP_OL'] = (DF_New_Model['MUNDRA_U7_SEP_VES_A_STM_OTLT_TEMP'] + DF_New_Model['MUNDRA_U7_SEP_VES_A_STM_OTLT_TEMP_2'] + DF_New_Model['MUNDRA_U7_SEP_VES_B_STM_OTLT_TEMP'] + DF_New_Model['MUNDRA_U7_SEP_VES_B_STM_OTLT_TEMP_2'] + DF_New_Model['MUNDRA_U7_SEP_VES_C_STM_OTLT_TEMP'] + DF_New_Model['MUNDRA_U7_SEP_VES_C_STM_OTLT_TEMP_2'] + DF_New_Model['MUNDRA_U7_SEP_VES_D_STM_OTLT_TEMP'] +DF_New_Model['MUNDRA_U7_SEP_VES_D_STM_OTLT_TEMP_2'])/8
+        DF_New_Model['ECO_OL'] = (DF_New_Model['MUNDRA_U7_ECON_FD_WTR_OTLT_TEMP_1'] + DF_New_Model['MUNDRA_U7_ECON_FD_WTR_OTLT_TEMP_3'])/2
+
+        DF_New_Model['WW_Gain'] = DF_New_Model['SEP_OL'] - DF_New_Model['ECO_OL']
+
+
+
+
+
+
+
+
+
+
+
+
+        DF_New_Model['MILL A CURRENT'] = DF_New_Model['COAL FEEDER A FEEDRATE'].apply(lambda x: 1 if x >= 20 else 0)
+        DF_New_Model['MILL B CURRENT'] = DF_New_Model['COAL FEEDER B FEEDRATE'].apply(lambda x: 1 if x >= 20 else 0)
+        DF_New_Model['MILL C CURRENT'] = DF_New_Model['COAL FEEDER C FEEDRATE'].apply(lambda x: 1 if x >= 20 else 0)
+        DF_New_Model['MILL D CURRENT'] = DF_New_Model['COAL FEEDER D FEEDRATE'].apply(lambda x: 1 if x >= 20 else 0)
+        DF_New_Model['MILL E CURRENT'] = DF_New_Model['COAL FEEDER E FEEDRATE'].apply(lambda x: 1 if x >= 20 else 0)
+        DF_New_Model['MILL F CURRENT'] = DF_New_Model['COAL FEEDER F FEEDRATE'].apply(lambda x: 1 if x >= 20 else 0)
+        DF_New_Model['Total_Mill'] = DF_New_Model['MILL A CURRENT'] + DF_New_Model['MILL B CURRENT'] + DF_New_Model['MILL C CURRENT'] + DF_New_Model['MILL D CURRENT'] + DF_New_Model['MILL E CURRENT'] + DF_New_Model['MILL F CURRENT']
+        DF_New_Model['Left_Side_Damper'] = (DF_New_Model['Left_Side_Furnace_Temperature_Damper_1_Position'] + DF_New_Model['Left_Side_Furnace_Temperature_Damper_3_Position'])/2
+        DF_New_Model['Right_Side_Damper'] = (DF_New_Model ['Right_Side_Furnace_Temperature_Damper_1_Position'] + DF_New_Model ['Right_Side_Furnace_Temperature_Damper_2_Position'] + DF_New_Model ['Right_Side_Furnace_Temperature_Damper_3_Position'])/3
+        DF_New_Model['LOAD/MILL'] = DF_New_Model['LOAD']/DF_New_Model['Total_Mill']
+        DF_New_Model['LOAD/AIR'] = DF_New_Model['LOAD']/DF_New_Model['AIR FLOW']
+        DF_New_Model['LOAD/FUEL'] = DF_New_Model['LOAD']/DF_New_Model['FUEL FLOW']
+        DF_New_Model['FEEDWATER FLOW AT ECO INLET'] = (DF_New_Model['Economizer_Inlet_Feed_Water_Flow_1'] + DF_New_Model['Economizer_Inlet_Feed_Water_Flow_2'])/2
+        DF_New_Model['LOAD_FEED_FLOW'] = DF_New_Model['LOAD']/DF_New_Model['FEEDWATER FLOW AT ECO INLET']
+        DF_New_Model['COAL_FEED_FLOW'] = DF_New_Model['FUEL FLOW']/DF_New_Model['FEEDWATER FLOW AT ECO INLET']
+        DF_New_Model['F/A'] = DF_New_Model['FUEL FLOW']/DF_New_Model['AIR FLOW']
+        DF_New_Model['RH_Spray'] = DF_New_Model['MUNDRA_U7_REHTR_SPRY_FL_LHS'] + DF_New_Model['MUNDRA_U7_REHTR_SPRY_FL_RHS']
+        DF_New_Model['OXY'] = (DF_New_Model['MUNDRA_U7_APH_B_INLT_OXY_1'] + DF_New_Model['MUNDRA_U7_APH_A_INLT_OXY_1'])/2
+        DF_New_Model['index_1'] = ((DF_New_Model['LOAD/FUEL']*1550) - 2307.5) - DF_New_Model['LOAD']
+        DF_New_Model['WW_Gain/LOAD'] = DF_New_Model['WW_Gain']/DF_New_Model['LOAD']
+        DF_New_Model['Inverse_func'] = 1/DF_New_Model['WW_Gain/LOAD']
+        DF_New_Model['index'] = ((DF_New_Model['Inverse_func']*131.9148936) - 368.5106383) - DF_New_Model['LOAD']
+
+
+
+        DF_New_Model['A_Mill_Loading_R'] = DF_New_Model['COAL FEEDER A FEEDRATE']/DF_New_Model['FUEL FLOW']
+        DF_New_Model['B_Mill_Loading_R'] = DF_New_Model['COAL FEEDER B FEEDRATE']/DF_New_Model['FUEL FLOW']
+        DF_New_Model['C_Mill_Loading_R'] = DF_New_Model['COAL FEEDER C FEEDRATE']/DF_New_Model['FUEL FLOW']
+        DF_New_Model['D_Mill_Loading_R'] = DF_New_Model['COAL FEEDER D FEEDRATE']/DF_New_Model['FUEL FLOW']
+        DF_New_Model['E_Mill_Loading_R'] = DF_New_Model['COAL FEEDER E FEEDRATE']/DF_New_Model['FUEL FLOW']
+        DF_New_Model['F_Mill_Loading_R'] = DF_New_Model['COAL FEEDER F FEEDRATE']/DF_New_Model['FUEL FLOW']
+
+
+
+        DF_New_Model['PA_HDR_PR'] = (DF_New_Model['MUNDRA_U7_PRIM_AIR_HDR_PRESS_1'] + DF_New_Model['MUNDRA_U7_PRIM_AIR_HDR_PRESS_2'] + DF_New_Model['MUNDRA_U7_PRIM_AIR_HDR_PRESS_3'])/3
+
+
+
+
+        DF_New_Model['PA_Flow_D'] = DF_New_Model[PA_List].sum(axis = 1)
+        DF_New_Model['PA_Flow'] = DF_New_Model['PA_Flow_D']/2
+
+        DF_New_Model['SA_Flow_D'] = DF_New_Model[SA_List].sum(axis = 1)
+        DF_New_Model['SA_Flow'] = DF_New_Model['SA_Flow_D']/2
+
+        DF_New_Model['SA_total_air'] = DF_New_Model['SA_Flow']/DF_New_Model['AIR FLOW']
+        DF_New_Model['PA_total_air'] = DF_New_Model['PA_Flow']/DF_New_Model['AIR FLOW']
+
+        DF_New_Model['A1 FRONT SIDE SB OPERATING_1'] = DF_New_Model['MUNDRA_U7_A1_FRT_SD_SOT_BLWR_OPT'].apply(get_soot_blowed)
+        DF_New_Model['A2 FRONT SIDE SB OPERATING_1'] = DF_New_Model['MUNDRA_U7_A2_FRT_SD_SOT_BLWR_OPT'].apply(get_soot_blowed)
+        DF_New_Model['A3 FRONT SIDE SB OPERATING_1'] = DF_New_Model['MUNDRA_U7_A3_FRT_SD_SOT_BLWR_OPT'].apply(get_soot_blowed)
+        DF_New_Model['A4 FRONT SIDE SB OPERATING_1'] = DF_New_Model['MUNDRA_U7_A4_FRT_SD_SOT_BLWR_OPT'].apply(get_soot_blowed)
+        DF_New_Model['A5 RIGHT SIDE SB OPERATING_1'] = DF_New_Model['MUNDRA_U7_A5_RT_SD_SOT_BLWR_OPT'].apply(get_soot_blowed)
+        DF_New_Model['A6 RIGHT SIDE SB OPERATING_1'] = DF_New_Model['MUNDRA_U7_A6_RT_SD_SOT_BLWR_OPT'].apply(get_soot_blowed)
+        DF_New_Model['A7 RIGHT SIDE SB OPERATING_1'] = DF_New_Model['MUNDRA_U7_A7_RT_SD_SOT_BLWR_OPT'].apply(get_soot_blowed)
+        DF_New_Model['A8 RIGHT SIDE SB OPERATING_1'] = DF_New_Model['MUNDRA_U7_A8_RT_SD_SOT_BLWR_OPT'].apply(get_soot_blowed)
+        DF_New_Model['A9 REAR SIDE SB OPERATING_1'] = DF_New_Model['MUNDRA_U7_A9_RR_SD_SOT_BLWR_OPT'].apply(get_soot_blowed)
+        DF_New_Model['A10 REAR SIDE SB OPERATING_1'] = DF_New_Model['MUNDRA_U7_A10_RR_SD_SOT_BLWR_OPT'].apply(get_soot_blowed)
+        DF_New_Model['A11 REAR SIDE SB OPERATING_1'] = DF_New_Model['MUNDRA_U7_A11_RR_SD_SOT_BLWR_OPT'].apply(get_soot_blowed)
+        DF_New_Model['A12 REAR SIDE SB OPERATING_1'] = DF_New_Model['MUNDRA_U7_A12_RR_SD_SOT_BLWR_OPT'].apply(get_soot_blowed)
+        DF_New_Model['A13 LEFT SIDE SB OPERATING_1'] = DF_New_Model['MUNDRA_U7_A13_LT_SD_SOT_BLWR_OPT'].apply(get_soot_blowed)
+        DF_New_Model['A14 LEFT SIDE SB OPERATING_1'] = DF_New_Model['MUNDRA_U7_A14_LT_SD_SOT_BLWR_OPT'].apply(get_soot_blowed)
+        DF_New_Model['A15 LEFT SIDE SB OPERATING_1'] = DF_New_Model['MUNDRA_U7_A15_LT_SD_SOT_BLWR_OPT'].apply(get_soot_blowed)
+        DF_New_Model['A16 LEFT SIDE SB OPERATING_1'] = DF_New_Model['MUNDRA_U7_A16_LT_SD_SOT_BLWR_OPT'].apply(get_soot_blowed)
+
+        DF_New_Model['B1 FRONT SIDE SB OPERATING_1'] = DF_New_Model['MUNDRA_U7_B1_FRT_SD_SOT_BLWR_OPT'].apply(get_soot_blowed)
+        DF_New_Model['B2 FRONT SIDE SB OPERATING_1'] = DF_New_Model['MUNDRA_U7_B2_FRT_SD_SOT_BLWR_OPT'].apply(get_soot_blowed)
+        DF_New_Model['B3 FRONT SIDE SB OPERATING_1'] = DF_New_Model['MUNDRA_U7_B3_FRT_SD_SOT_BLWR_OPT'].apply(get_soot_blowed)
+        DF_New_Model['B4 FRONT SIDE SB OPERATING_1'] = DF_New_Model['MUNDRA_U7_B4_FRT_SD_SOT_BLWR_OPT'].apply(get_soot_blowed)
+        DF_New_Model['B5 RIGHT SIDE SB OPERATING_1'] = DF_New_Model['MUNDRA_U7_B5_RT_SD_SOT_BLWR_OPT'].apply(get_soot_blowed)
+        DF_New_Model['B6 RIGHT SIDE SB OPERATING_1'] = DF_New_Model['MUNDRA_U7_B6_RT_SD_SOT_BLWR_OPT'].apply(get_soot_blowed)
+        DF_New_Model['B7 RIGHT SIDE SB OPERATING_1'] = DF_New_Model['MUNDRA_U7_B7_RT_SD_SOT_BLWR_OPT'].apply(get_soot_blowed)
+        DF_New_Model['B8 RIGHT SIDE SB OPERATING_1'] = DF_New_Model['MUNDRA_U7_B8_RT_SD_SOT_BLWR_OPT'].apply(get_soot_blowed)
+        DF_New_Model['B9 REAR SIDE SB OPERATING_1'] = DF_New_Model['MUNDRA_U7_B9_RR_SD_SOT_BLWR_OPT'].apply(get_soot_blowed)
+        DF_New_Model['B10 REAR SIDE SB OPERATING_1'] = DF_New_Model['MUNDRA_U7_B10_RR_SD_SOT_BLWR_OPT'].apply(get_soot_blowed)
+        DF_New_Model['B11 REAR SIDE SB OPERATING_1'] = DF_New_Model['MUNDRA_U7_B11_RR_SD_SOT_BLWR_OPT'].apply(get_soot_blowed)
+        DF_New_Model['B12 REAR SIDE SB OPERATING_1'] = DF_New_Model['MUNDRA_U7_B12_RR_SD_SOT_BLWR_OPT'].apply(get_soot_blowed)
+        DF_New_Model['B13 LEFT SIDE SB OPERATING_1'] = DF_New_Model['MUNDRA_U7_B13_LT_SD_SOT_BLWR_OPT'].apply(get_soot_blowed)
+        DF_New_Model['B14 LEFT SIDE SB OPERATING_1'] = DF_New_Model['MUNDRA_U7_B14_LT_SD_SOT_BLWR_OPT'].apply(get_soot_blowed)
+        DF_New_Model['B15 LEFT SIDE SB OPERATING_1'] = DF_New_Model['MUNDRA_U7_B15_LT_SD_SOT_BLWR_OPT'].apply(get_soot_blowed)
+        DF_New_Model['B16 LEFT SIDE SB OPERATING_1'] = DF_New_Model['MUNDRA_U7_B16_LT_SD_SOT_BLWR_OPT'].apply(get_soot_blowed)
+        DF_New_Model['C1 FRONT SIDE SB OPERATING_1'] = DF_New_Model['MUNDRA_U7_C1_FRT_SD_SOT_BLWR_OPT'].apply(get_soot_blowed)
+        DF_New_Model['C2 FRONT SIDE SB OPERATING_1'] = DF_New_Model['MUNDRA_U7_C2_FRT_SD_SOT_BLWR_OPT'].apply(get_soot_blowed)
+        DF_New_Model['C3 FRONT SIDE SB OPERATING_1'] = DF_New_Model['MUNDRA_U7_C3_FRT_SD_SOT_BLWR_OPT'].apply(get_soot_blowed)
+        DF_New_Model['C4 FRONT SIDE SB OPERATING_1'] = DF_New_Model['MUNDRA_U7_C4_FRT_SD_SOT_BLWR_OPT'].apply(get_soot_blowed)
+        DF_New_Model['C5 RIGHT SIDE SB OPERATING_1'] = DF_New_Model['MUNDRA_U7_C5_RT_SD_SOT_BLWR_OPT'].apply(get_soot_blowed)
+        DF_New_Model['C6 RIGHT SIDE SB OPERATING_1'] = DF_New_Model['MUNDRA_U7_C6_RT_SD_SOT_BLWR_OPT'].apply(get_soot_blowed)
+        DF_New_Model['C7 RIGHT SIDE SB OPERATING_1'] = DF_New_Model['MUNDRA_U7_C7_RT_SD_SOT_BLWR_OPT'].apply(get_soot_blowed)
+        DF_New_Model['C8 RIGHT SIDE SB OPERATING_1'] = DF_New_Model['MUNDRA_U7_C8_RT_SD_SOT_BLWR_OPT'].apply(get_soot_blowed)
+        DF_New_Model['C9 REAR SIDE SB OPERATING_1'] = DF_New_Model['MUNDRA_U7_C9_RR_SD_SOT_BLWR_OPT'].apply(get_soot_blowed)
+        DF_New_Model['C10 REAR SIDE SB OPERATING_1'] = DF_New_Model['MUNDRA_U7_C10_RR_SD_SOT_BLWR_OPT'].apply(get_soot_blowed)
+        DF_New_Model['C11 REAR SIDE SB OPERATING_1'] = DF_New_Model['MUNDRA_U7_C11_RR_SD_SOT_BLWR_OPT'].apply(get_soot_blowed)
+
+        DF_New_Model['C13 LEFT SIDE SB OPERATING_1'] = DF_New_Model['MUNDRA_U7_C13_LT_SD_SOT_BLWR_OPT'].apply(get_soot_blowed)
+        DF_New_Model['C14 LEFT SIDE SB OPERATING_1'] = DF_New_Model['MUNDRA_U7_C14_LT_SD_SOT_BLWR_OPT'].apply(get_soot_blowed)
+
+        DF_New_Model['C16 LEFT SIDE SB OPERATING_1'] = DF_New_Model['MUNDRA_U7_C16_LT_SD_SOT_BLWR_OPT'].apply(get_soot_blowed)
+
+        DF_New_Model['D1 FRONT SIDE SB OPERATING_1'] = DF_New_Model['MUNDRA_U7_D1_FRT_SD_SOT_BLWR_OPT'].apply(get_soot_blowed)
+        DF_New_Model['D2 FRONT SIDE SB OPERATING_1'] = DF_New_Model['MUNDRA_U7_D2_FRT_SD_SOT_BLWR_OPT'].apply(get_soot_blowed)
+        DF_New_Model['D3 FRONT SIDE SB OPERATING_1'] = DF_New_Model['MUNDRA_U7_D3_FRT_SD_SOT_BLWR_OPT'].apply(get_soot_blowed)
+        DF_New_Model['D4 FRONT SIDE SB OPERATING_1'] = DF_New_Model['MUNDRA_U7_D4_FRT_SD_SOT_BLWR_OPT'].apply(get_soot_blowed)
+        DF_New_Model['D5 RIGHT SIDE SB OPERATING_1'] = DF_New_Model['MUNDRA_U7_D5_RT_SD_SOT_BLWR_OPT'].apply(get_soot_blowed)
+        DF_New_Model['D6 RIGHT SIDE SB OPERATING_1'] = DF_New_Model['MUNDRA_U7_D6_RT_SD_SOT_BLWR_OPT'].apply(get_soot_blowed)
+        DF_New_Model['D7 RIGHT SIDE SB OPERATING_1'] = DF_New_Model['MUNDRA_U7_D7_RT_SD_SOT_BLWR_OPT'].apply(get_soot_blowed)
+        DF_New_Model['D8 RIGHT SIDE SB OPERATING_1'] = DF_New_Model['MUNDRA_U7_D8_RT_SD_SOT_BLWR_OPT'].apply(get_soot_blowed)
+        DF_New_Model['D9 REAR SIDE SB OPERATING_1'] = DF_New_Model['MUNDRA_U7_D9_RR_SD_SOT_BLWR_OPT'].apply(get_soot_blowed)
+        DF_New_Model['D10 REAR SIDE SB OPERATING_1'] = DF_New_Model['MUNDRA_U7_D10_RR_SD_SOT_BLWR_OPT'].apply(get_soot_blowed)
+        DF_New_Model['D11 REAR SIDE SB OPERATING_1'] = DF_New_Model['MUNDRA_U7_D11_RR_SD_SOT_BLWR_OPT'].apply(get_soot_blowed)
+        DF_New_Model['D12 REAR SIDE SB OPERATING_1'] = DF_New_Model['MUNDRA_U7_D12_RR_SD_SOT_BLWR_OPT'].apply(get_soot_blowed)
+        DF_New_Model['D13 LEFT SIDE SB OPERATING_1'] = DF_New_Model['MUNDRA_U7_D13_LT_SD_SOT_BLWR_OPT'].apply(get_soot_blowed)
+        DF_New_Model['D14 LEFT SIDE SB OPERATING_1'] = DF_New_Model['MUNDRA_U7_D14_LT_SD_SOT_BLWR_OPT'].apply(get_soot_blowed)
+        DF_New_Model['D15 LEFT SIDE SB OPERATING_1'] = DF_New_Model['MUNDRA_U7_D15_LT_SD_SOT_BLWR_OPT'].apply(get_soot_blowed)
+        DF_New_Model['D16 LEFT SIDE SB OPERATING_1'] = DF_New_Model['MUNDRA_U7_D16_LT_SD_SOT_BLWR_OPT'].apply(get_soot_blowed)
+
+        for blower in SB_list:
+            DF_New_Model[f'{blower}_1'] = DF_New_Model[blower].apply(get_soot_blowed)
+
+        for column in Column_Names:
+            #print(column)
+            cumulative_sum = 0
+            for index, row in DF_New_Model.iterrows():
+                if row[column] ==0:
+                    cumulative_sum += row['FUEL FLOW']
+                    DF_New_Model.at[index, f'CF_{column}'] = cumulative_sum
+                else:
+                    cumulative_sum = 0
+                    DF_New_Model.at[index, f'CF_{column}'] = 0
+
+        DF_New_Model['CF_A1'] = DF_New_Model['CF_A1 FRONT SIDE SB OPERATING_1']
+        DF_New_Model['CF_A2'] = DF_New_Model['CF_A2 FRONT SIDE SB OPERATING_1']
+        DF_New_Model['CF_A3'] = DF_New_Model['CF_A3 FRONT SIDE SB OPERATING_1']
+        DF_New_Model['CF_A4'] = DF_New_Model['CF_A4 FRONT SIDE SB OPERATING_1']
+
+        DF_New_Model['CF_A5'] = DF_New_Model['CF_A5 RIGHT SIDE SB OPERATING_1']
+        DF_New_Model['CF_A6'] = DF_New_Model['CF_A6 RIGHT SIDE SB OPERATING_1']
+        DF_New_Model['CF_A7'] = DF_New_Model['CF_A7 RIGHT SIDE SB OPERATING_1']
+        DF_New_Model['CF_A8'] = DF_New_Model['CF_A8 RIGHT SIDE SB OPERATING_1']
+
+        DF_New_Model['CF_A9'] = DF_New_Model['CF_A9 REAR SIDE SB OPERATING_1']
+        DF_New_Model['CF_A10'] = DF_New_Model['CF_A10 REAR SIDE SB OPERATING_1']
+        DF_New_Model['CF_A11'] = DF_New_Model['CF_A11 REAR SIDE SB OPERATING_1']
+        DF_New_Model['CF_A12'] = DF_New_Model['CF_A12 REAR SIDE SB OPERATING_1']
+
+        DF_New_Model['CF_A13'] = DF_New_Model['CF_A13 LEFT SIDE SB OPERATING_1']
+        DF_New_Model['CF_A14'] = DF_New_Model['CF_A14 LEFT SIDE SB OPERATING_1']
+        DF_New_Model['CF_A15'] = DF_New_Model['CF_A15 LEFT SIDE SB OPERATING_1']
+        DF_New_Model['CF_A16'] = DF_New_Model['CF_A16 LEFT SIDE SB OPERATING_1']
+
+        DF_New_Model['CF_B1'] = DF_New_Model['CF_B1 FRONT SIDE SB OPERATING_1']
+        DF_New_Model['CF_B2'] = DF_New_Model['CF_B2 FRONT SIDE SB OPERATING_1']
+        DF_New_Model['CF_B3'] = DF_New_Model['CF_B3 FRONT SIDE SB OPERATING_1']
+        DF_New_Model['CF_B4'] = DF_New_Model['CF_B4 FRONT SIDE SB OPERATING_1']
+
+        DF_New_Model['CF_B5'] = DF_New_Model['CF_B5 RIGHT SIDE SB OPERATING_1']
+        DF_New_Model['CF_B6'] = DF_New_Model['CF_B6 RIGHT SIDE SB OPERATING_1']
+        DF_New_Model['CF_B7'] = DF_New_Model['CF_B7 RIGHT SIDE SB OPERATING_1']
+        DF_New_Model['CF_B8'] = DF_New_Model['CF_B8 RIGHT SIDE SB OPERATING_1']
+
+        DF_New_Model['CF_B9'] = DF_New_Model['CF_B9 REAR SIDE SB OPERATING_1']
+        DF_New_Model['CF_B10'] = DF_New_Model['CF_B10 REAR SIDE SB OPERATING_1']
+        DF_New_Model['CF_B11'] = DF_New_Model['CF_B11 REAR SIDE SB OPERATING_1']
+        DF_New_Model['CF_B12'] = DF_New_Model['CF_B12 REAR SIDE SB OPERATING_1']
+
+        DF_New_Model['CF_B13'] = DF_New_Model['CF_B13 LEFT SIDE SB OPERATING_1']
+        DF_New_Model['CF_B14'] = DF_New_Model['CF_B14 LEFT SIDE SB OPERATING_1']
+        DF_New_Model['CF_B15'] = DF_New_Model['CF_B15 LEFT SIDE SB OPERATING_1']
+        DF_New_Model['CF_B16'] = DF_New_Model['CF_B16 LEFT SIDE SB OPERATING_1']
+
+        DF_New_Model['CF_C1'] = DF_New_Model['CF_C1 FRONT SIDE SB OPERATING_1']
+        DF_New_Model['CF_C2'] = DF_New_Model['CF_C2 FRONT SIDE SB OPERATING_1']
+        DF_New_Model['CF_C3'] = DF_New_Model['CF_C3 FRONT SIDE SB OPERATING_1']
+        DF_New_Model['CF_C4'] = DF_New_Model['CF_C4 FRONT SIDE SB OPERATING_1']
+
+        DF_New_Model['CF_C5'] = DF_New_Model['CF_C5 RIGHT SIDE SB OPERATING_1']
+        DF_New_Model['CF_C6'] = DF_New_Model['CF_C6 RIGHT SIDE SB OPERATING_1']
+        DF_New_Model['CF_C7'] = DF_New_Model['CF_C7 RIGHT SIDE SB OPERATING_1']
+        DF_New_Model['CF_C8'] = DF_New_Model['CF_C8 RIGHT SIDE SB OPERATING_1']
+
+        DF_New_Model['CF_C9'] = DF_New_Model['CF_C9 REAR SIDE SB OPERATING_1']
+        DF_New_Model['CF_C10'] = DF_New_Model['CF_C10 REAR SIDE SB OPERATING_1']
+        DF_New_Model['CF_C11'] = DF_New_Model['CF_C11 REAR SIDE SB OPERATING_1']
+        DF_New_Model['CF_C12'] = DF_New_Model['CF_C11 REAR SIDE SB OPERATING_1']
+
+        DF_New_Model['CF_C13'] = DF_New_Model['CF_C13 LEFT SIDE SB OPERATING_1']
+        DF_New_Model['CF_C14'] = DF_New_Model['CF_C14 LEFT SIDE SB OPERATING_1']
+        DF_New_Model['CF_C15'] = DF_New_Model['CF_C14 LEFT SIDE SB OPERATING_1']
+        DF_New_Model['CF_C16'] = DF_New_Model['CF_C16 LEFT SIDE SB OPERATING_1']
+
+        DF_New_Model['CF_D1'] = DF_New_Model['CF_D1 FRONT SIDE SB OPERATING_1']
+        DF_New_Model['CF_D2'] = DF_New_Model['CF_D2 FRONT SIDE SB OPERATING_1']
+        DF_New_Model['CF_D3'] = DF_New_Model['CF_D3 FRONT SIDE SB OPERATING_1']
+        DF_New_Model['CF_D4'] = DF_New_Model['CF_D4 FRONT SIDE SB OPERATING_1']
+
+        DF_New_Model['CF_D5'] = DF_New_Model['CF_D5 RIGHT SIDE SB OPERATING_1']
+        DF_New_Model['CF_D6'] = DF_New_Model['CF_D6 RIGHT SIDE SB OPERATING_1']
+        DF_New_Model['CF_D7'] = DF_New_Model['CF_D7 RIGHT SIDE SB OPERATING_1']
+        DF_New_Model['CF_D8'] = DF_New_Model['CF_D8 RIGHT SIDE SB OPERATING_1']
+
+        DF_New_Model['CF_D9'] = DF_New_Model['CF_D9 REAR SIDE SB OPERATING_1']
+        DF_New_Model['CF_D10'] = DF_New_Model['CF_D10 REAR SIDE SB OPERATING_1']
+        DF_New_Model['CF_D11'] = DF_New_Model['CF_D11 REAR SIDE SB OPERATING_1']
+        DF_New_Model['CF_D12'] = DF_New_Model['CF_D12 REAR SIDE SB OPERATING_1']
+
+        DF_New_Model['CF_D13'] = DF_New_Model['CF_D13 LEFT SIDE SB OPERATING_1']
+        DF_New_Model['CF_D14'] = DF_New_Model['CF_D14 LEFT SIDE SB OPERATING_1']
+        DF_New_Model['CF_D15'] = DF_New_Model['CF_D15 LEFT SIDE SB OPERATING_1']
+        DF_New_Model['CF_D16'] = DF_New_Model['CF_D16 LEFT SIDE SB OPERATING_1']
+
+
+        DF_New_Model['CF_L1']  = DF_New_Model['CF_MUNDRA_U7_L1_RT_SD_RTRCT_SOT_BLWR_OPT_1']
+        DF_New_Model['CF_L2']  = DF_New_Model['CF_MUNDRA_U7_L2_RT_SD_RTRCT_SOT_BLWR_OPT_1']
+        DF_New_Model['CF_L3']  = DF_New_Model['CF_MUNDRA_U7_L3_RT_SD_RTRCT_SOT_BLWR_OPT_1']
+        DF_New_Model['CF_L4'] = DF_New_Model['CF_MUNDRA_U7_L4_RT_SD_RTRCT_SOT_BLWR_OPT_1']
+        DF_New_Model['CF_L5'] = DF_New_Model['CF_MUNDRA_U7_L5_RT_SD_RTRCT_SOT_BLWR_OPT_1']
+        DF_New_Model['CF_L6'] = DF_New_Model['CF_MUNDRA_U7_L6_RT_SD_RTRCT_SOT_BLWR_OPT_1']
+        DF_New_Model['CF_L7'] = DF_New_Model['CF_MUNDRA_U7_L7_RT_SD_RTRCT_SOT_BLWR_OPT_1']
+        DF_New_Model['CF_L8'] = DF_New_Model['CF_MUNDRA_U7_L8_RT_SD_RTRCT_SOT_BLWR_OPT_1']
+        DF_New_Model['CF_L9'] = DF_New_Model['CF_MUNDRA_U7_L9_LTRH_SOT_BLWR_OPT_1']
+        DF_New_Model['CF_L10'] = DF_New_Model['CF_MUNDRA_U7_L10_RT_SD_RTRCT_SOT_BLWR_OPT_1']
+        DF_New_Model['CF_L11'] = DF_New_Model['CF_MUNDRA_U7_L11_RT_SD_RTRCT_SOT_BLWR_OPT_1']
+        DF_New_Model['CF_L12'] = DF_New_Model['CF_MUNDRA_U7_L12_RT_SD_RTRCT_SOT_BLWR_OPT_1']
+        DF_New_Model['CF_L13'] = DF_New_Model['CF_MUNDRA_U7_L13_RT_SD_RTRCT_SOT_BLWR_OPT_1']
+        DF_New_Model['CF_L14'] = DF_New_Model['CF_MUNDRA_U7_L14_RT_SD_RTRCT_SOT_BLWR_OPT_1']
+        DF_New_Model['CF_L15'] = DF_New_Model['CF_MUNDRA_U7_L15_RT_SD_RTRCT_SOT_BLWR_OPT_1']
+        DF_New_Model['CF_R1'] = DF_New_Model['CF_MUNDRA_U7_R1_RT_SD_RTRCT_SOT_BLWR_OPT_2_1']
+        DF_New_Model['CF_R2'] = DF_New_Model['CF_MUNDRA_U7_R2_RT_SD_RTRCT_SOT_BLWR_OPT_1']
+        DF_New_Model['CF_R3'] = DF_New_Model['CF_MUNDRA_U7_R3_RT_SD_RTRCT_SOT_BLWR_OPT_1']
+        DF_New_Model['CF_R4'] = DF_New_Model['CF_MUNDRA_U7_R4_RT_SD_RTRCT_SOT_BLWR_OPT_1']
+        DF_New_Model['CF_R5'] = DF_New_Model['CF_MUNDRA_U7_R5_RT_SD_RTRCT_SOT_BLWR_OPT_1']
+        DF_New_Model['CF_R6'] = DF_New_Model['CF_MUNDRA_U7_R7_RT_SD_RTRCT_SOT_BLWR_OPT_1']
+        DF_New_Model['CF_R7'] = DF_New_Model['CF_MUNDRA_U7_R7_RT_SD_RTRCT_SOT_BLWR_OPT_1']
+        DF_New_Model['CF_R8'] = DF_New_Model['CF_MUNDRA_U7_R8_RT_SD_RTRCT_SOT_BLWR_OPT_1']
+        DF_New_Model['CF_R9'] = DF_New_Model['CF_MUNDRA_U7_R9_RT_SD_RTRCT_SOT_BLWR_OPT_1']
+        DF_New_Model['CF_R10'] = DF_New_Model['CF_MUNDRA_U7_R10_RT_SD_RTRCT_SOT_BLWR_OPT_1']
+        DF_New_Model['CF_R11'] = DF_New_Model['CF_MUNDRA_U7_R11_RT_SD_RTRCT_SOT_BLWR_OPT_1']
+        DF_New_Model['CF_R12'] = DF_New_Model['CF_MUNDRA_U7_R12_RT_SD_RTRCT_SOT_BLWR_OPT_1']
+        DF_New_Model['CF_R13'] = DF_New_Model['CF_MUNDRA_U7_R13_RT_SD_RTRCT_SOT_BLWR_OPT_1']
+        DF_New_Model['CF_R14'] = DF_New_Model['CF_MUNDRA_U7_R14_RT_SD_RTRCT_SOT_BLWR_OPT_1']
+        DF_New_Model['CF_R15'] = DF_New_Model['CF_MUNDRA_U7_R15_RT_SD_RTRCT_SOT_BLWR_OPT_1']
+        DF_New_Model['CF_HL1'] = DF_New_Model['CF_MUNDRA_U7_HL1_RT_SD_RTRCT_SOT_BLWR_OPT_1']
+        DF_New_Model['CF_HL2'] = DF_New_Model['CF_MUNDRA_U7_HL2_RT_SD_RTRCT_SOT_BLWR_OPT_1']
+        DF_New_Model['CF_HL3'] = DF_New_Model['CF_MUNDRA_U7_HL3_RT_SD_OPT_STS_1']
+        DF_New_Model['CF_HL4'] = DF_New_Model['CF_MUNDRA_U7_HL4_ECON_LT_SD_NEW_SOT_BLWR_OPT_1']
+        DF_New_Model['CF_HR1'] = DF_New_Model['CF_MUNDRA_U7_HR1_RT_SD_RTRCT_SOT_BLWR_OPT_1']
+        DF_New_Model['CF_HR2'] = DF_New_Model['CF_MUNDRA_U7_HR2_RT_SD_RTRCT_SOT_BLWR_OPT_1']
+        DF_New_Model['CF_HR3'] = DF_New_Model['CF_MUNDRA_U7_HR3_RT_SD_OPT_STS_1']
+        DF_New_Model['CF_HR4'] = DF_New_Model['CF_MUNDRA_U7_HR4_RT_SD_OPT_STS_1']
+        DF_New_Model['CF_AT1'] = DF_New_Model['CF_MUNDRA_U7_AT1_APH_A_SOT_BLWR_OPT_1']
+        DF_New_Model['CF_AT2'] = DF_New_Model['CF_MUNDRA_U7_AT2_APH_B_SOT_BLWR_OPT_1']
+        DF_New_Model['CF_AT3'] = DF_New_Model['CF_MUNDRA_U7_AT3_APH_A_UPR_SD_SOT_BLWR_OPT_1']
+        DF_New_Model['CF_AT4'] = DF_New_Model['CF_MUNDRA_U7_AT4_APH_B_UPR_SD_SOT_BLWR_OPT_1']
+
+
+        DF_New_Model['soot_A'] = DF_New_Model[column_names_A].sum(axis=1)
+        DF_New_Model['soot_B'] = DF_New_Model[column_names_B].sum(axis=1)
+        DF_New_Model['soot_C'] = DF_New_Model[column_names_C].sum(axis=1)
+        DF_New_Model['soot_D'] = DF_New_Model[column_names_D].sum(axis=1)
+
+        DF_New_Model['PSH_L'] = DF_New_Model[column_names_PSH_L].sum(axis=1)
+        DF_New_Model['PSH_R'] = DF_New_Model[column_names_PSH_R].sum(axis=1)
+
+        DF_New_Model['GN_L'] = DF_New_Model[column_names_GN_L].sum(axis=1)
+        DF_New_Model['GN_R'] = DF_New_Model[column_names_GN_R].sum(axis=1)
+
+        DF_New_Model['LTRH_L'] = DF_New_Model[column_names_LTRH_L].sum(axis=1)
+        DF_New_Model['LTRH_R'] = DF_New_Model[column_names_LTRH_R].sum(axis=1)
+
+        DF_New_Model['LTSH_L'] = DF_New_Model[column_names_LTSH_L].sum(axis=1)
+        DF_New_Model['LTSH_R'] = DF_New_Model[column_names_LTSH_R].sum(axis=1)
+
+        DF_New_Model['FSH_L'] = DF_New_Model[column_names_FSH_L].sum(axis=1)
+        DF_New_Model['FSH_R'] = DF_New_Model[column_names_FSH_R].sum(axis=1)
+
+        DF_New_Model['FRH_L'] = DF_New_Model[column_names_FRH_L].sum(axis=1)
+        DF_New_Model['FRH_R'] = DF_New_Model[column_names_FRH_R].sum(axis=1)
+
+        DF_New_Model['ECO_L'] = DF_New_Model[column_names_ECO_L].sum(axis=1)
+        DF_New_Model['ECO_R'] = DF_New_Model[column_names_ECO_R].sum(axis=1)
+
+        DF_New_Model['APH_L'] = DF_New_Model[column_names_APH_L].sum(axis=1)
+        DF_New_Model['APH_R'] = DF_New_Model[column_names_APH_R].sum(axis=1)
+
+
+        DF_New_Model['soot_PSH'] = (DF_New_Model['PSH_L'] + DF_New_Model['PSH_R'])/2
+        DF_New_Model['soot_GN'] = (DF_New_Model['GN_L'] + DF_New_Model['GN_R'])/2
+        DF_New_Model['soot_LTRH'] = (DF_New_Model['LTRH_L'] + DF_New_Model['LTRH_R'])/2
+        DF_New_Model['soot_LTSH'] = (DF_New_Model['LTSH_L'] + DF_New_Model['LTSH_R'])/2
+        DF_New_Model['soot_FSH'] = (DF_New_Model['FSH_L'] + DF_New_Model['FSH_R'])/2
+        DF_New_Model['soot_FRH'] = (DF_New_Model['FRH_L'] + DF_New_Model['FRH_R'])/2
+        DF_New_Model['soot_ECO'] = (DF_New_Model['ECO_L'] + DF_New_Model['ECO_R'])/2
+
+        DF_New_Model['MILL A CURRENT'] = DF_New_Model['MILL A CURRENT'].astype(int)
+        DF_New_Model['MILL B CURRENT'] = DF_New_Model['MILL B CURRENT'].astype(int)
+        DF_New_Model['MILL A CURRENT'] = DF_New_Model['MILL A CURRENT'].astype(str)
+        DF_New_Model['MILL B CURRENT'] = DF_New_Model['MILL B CURRENT'].astype(str)
+
+        DF_New_Model['MILL C CURRENT'] = DF_New_Model['MILL C CURRENT'].astype(int)
+        DF_New_Model['MILL D CURRENT'] = DF_New_Model['MILL D CURRENT'].astype(int)
+        DF_New_Model['MILL C CURRENT'] = DF_New_Model['MILL C CURRENT'].astype(str)
+        DF_New_Model['MILL D CURRENT'] = DF_New_Model['MILL D CURRENT'].astype(str)
+
+        DF_New_Model['MILL E CURRENT'] = DF_New_Model['MILL E CURRENT'].astype(int)
+        DF_New_Model['MILL F CURRENT'] = DF_New_Model['MILL F CURRENT'].astype(int)
+        DF_New_Model['MILL E CURRENT'] = DF_New_Model['MILL E CURRENT'].astype(str)
+        DF_New_Model['MILL F CURRENT'] = DF_New_Model['MILL F CURRENT'].astype(str)
+
+        DF_New_Model['comb'] = DF_New_Model['MILL A CURRENT'] + DF_New_Model['MILL B CURRENT'] + DF_New_Model['MILL C CURRENT'] + DF_New_Model['MILL D CURRENT'] + DF_New_Model['MILL E CURRENT'] + DF_New_Model['MILL F CURRENT']
+        DF_New_Model = pd.get_dummies(DF_New_Model, columns = ['comb'])
+
+        data = DF_New_Model[['index', 'index_1']]
+        DF_New_Model['cluster'] = loaded_cluster.predict(data)
+        DF_New_Model = pd.get_dummies(DF_New_Model, columns = ['cluster'])
+
+
+
+
+        if 'comb_000000' in DF_New_Model.columns:
+            DF_New_Model = DF_New_Model[DF_New_Model['comb_000000'] != 1]
+
+        for column in dummy_columns:
+            if column not in DF_New_Model.columns:
+                DF_New_Model[column] = 0 
+        #DF_New_Model = DF_New_Model[column_order]
+        input_row = DF_New_Model.iloc[[-1]]
+        #print(input_row[list1])
+
+        #print('check-1')
+
+        min_temp_row, generated_dataset = generate_dataset_with_timeout(input_row, 10, loaded_rfr, column_order, timeout_duration)
+        if min_temp_row is None or generated_dataset is None:
+            continue  # Restart the outer loop immediately
+
+        x = input_row['APH_INLET_AVG_FLUE_TEMP'].iloc[0]
+        y = min_temp_row.get('Temp')
+        st.write(f"Last Updated on: {DF_New_Model['End Time'].tail(1).iloc[0]}")
+        #print('----------------------------------------------------------------------')
+        st.write(f"Actual value: {x}")
+        #print('----------------------------------------------------------------------')
+
+        if y < loaded_rfr.predict(input_row[column_order]):
+
+            st.write(f'Predicted value {loaded_rfr.predict(input_row[column_order])}')
+            #print('----------------------------------------------------------------------')
+            st.write (f'Minimum temperature obtained {y}')
+            #print('----------------------------------------------------------------------')
+            m = generated_dataset[list2].head(1).iloc[0]*input_row['FUEL FLOW'].iloc[0]
+            st.write('Recommended Mill loading')
+            #st.table(pd.DataFrame([m]), columns = ["Mill Loading"])
+            st.table(pd.DataFrame({"Mill Loading": [m]}))
+            #st.write(f' Reccomended Mill Loading \n{m}')
+            #print('----------------------------------------------------------------------')
+            n = generated_dataset['PA_HDR_PR'].head(1).iloc[0]
+            st.write(f'recomended PA Header Pressure {n} KPa')
+            #print('----------------------------------------------------------------------')
+            o = generated_dataset[list1].head(1).iloc[0]
+            st.write("Recommended Damper Position")
+            st.bar_chart(pd.DataFrame(o, columns=["Damper Position"]))
+
+            #st.write(f"Recomended Damper Position \n{o}")
+            #print('----------------------------------------------------------------------')
+            q = generated_dataset['AIR FLOW'].head(1).iloc[0]
+            st.write(f"Recomended Air Flow \n{q}")
+            #print('----------------------------------------------------------------------')
+            r = generated_dataset['OHDR'].head(1).iloc[0]
+            st.write(f"Recomended OHDR \n{r}")
+            #print(min_temp_row)
+            #DF = pd.DataFrame(min_temp_row)
+            #print('----------------------------------------------------------------------')
+
+        else:
+            st.warning("No optimal solution found")
+
+        time.sleep(1)
+    except Exception as e:
+        st.error(f"An error occurred: {e}")
+        continue  # Restart the outer loop on error
