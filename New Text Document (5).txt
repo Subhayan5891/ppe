@@ -1,0 +1,51 @@
+Sub SendBirthdayWishes()
+    Dim ns As Outlook.NameSpace
+    Dim myEmailFolder As Outlook.folder
+    Dim draftFolder As Outlook.folder
+    Dim draftMail As Outlook.mailItem
+    Dim xlApp As Object
+    Dim xlWorkbook As Object
+    Dim xlSheet As Object
+    Dim lastRow As Long, i As Long
+    Dim birthday As Date
+    
+    ' Open Excel and the workbook with the birthday data
+    Set xlApp = CreateObject("Excel.Application")
+    Set xlWorkbook = xlApp.Workbooks.Open("D:\OneDrive - Adani\spreadsheet_2.xlsx") ' Change to the path of your Excel file
+    Set xlSheet = xlWorkbook.Sheets(1) ' Change if your data is in a different sheet
+    lastRow = xlSheet.Cells(xlSheet.Rows.Count, "A").End(-4162).Row ' -4162 corresponds to xlUp
+    
+    ' Get the Namespace object and the "Drafts" folder
+    Set ns = Application.GetNamespace("MAPI")
+    Set myEmailFolder = ns.Folders("Subhayanr.Dutta@adani.com") ' Change to your email address
+    Set draftFolder = myEmailFolder.Folders("Drafts")
+    
+    ' Loop through the Excel data and check for today's birthdays
+    For i = 2 To lastRow ' Assuming the first row has headers
+        birthday = xlSheet.Cells(i, 3).Value ' Assuming birthdays are in the third column
+        If Month(birthday) = Month(Now) And Day(birthday) = Day(Now) Then
+            ' Find a draft email with "Birthday" in the subject
+            For Each draftMail In draftFolder.Items
+                If InStr(draftMail.Subject, "Adani Power Mundra wishes you a Happy Birthday!") > 0 Then ' Change "Birthday" to match your draft subject
+                    ' Create a copy of the draft and customize it
+                    Dim mailItem As Outlook.mailItem
+                    Set mailItem = draftMail.Copy
+                    With mailItem
+                        .To = xlSheet.Cells(i, 2).Value ' Assuming email addresses are in the second column
+                        .HTMLBody = "Dear " & xlSheet.Cells(i, 1).Value & "," & "<br><br>" & .HTMLBody ' Prepend "Dear [Name]," to the HTML body
+                        .Send
+                    End With
+                    Exit For
+                End If
+            Next draftMail
+        End If
+    Next i
+    
+    ' Clean up
+    xlWorkbook.Close False
+    xlApp.Quit
+    Set xlApp = Nothing
+    Set ns = Nothing
+    Set myEmailFolder = Nothing
+    Set draftFolder = Nothing
+End Sub
