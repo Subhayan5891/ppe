@@ -1,0 +1,66 @@
+data = DF_New_Model_WW_Gain.copy()
+features = data.iloc[:, :-1].values
+target = data.iloc[:, -1].values
+
+scaler_features = MinMaxScaler()
+scaler_target = MinMaxScaler()
+
+scaled_features = scaler_features.fit_transform(features)
+scaled_target = scaler_target.fit_transform(target.reshape(-1, 1))
+
+def create_sequences(features, target, look_back=10):
+    X, Y = [], []
+    for i in range(len(features) - look_back):
+        X.append(features[i:i + look_back])
+        Y.append(target[i + look_back])
+    return np.array(X), np.array(Y)
+
+look_back = 10
+X, Y = create_sequences(scaled_features, scaled_target, look_back)
+
+# Determine the split index for 80-20 split
+split_index = int(len(X) * 0.8)
+
+# Split data into training and validation sets
+X_train, X_test = X[:split_index], X[split_index:]
+Y_train, Y_test = Y[:split_index], Y[split_index:]
+
+input_seq1 = Input(shape=(look_back, X_train.shape[2]))  # Main input sequence
+input_seq2 = Input(shape=(look_back, X_train.shape[2]))  # Secondary input sequence for cross-attention
+
+# Define the hybrid model with LSTM, CNN, and Attention (Multi-Head and Cross-Head)
+
+    # CNN layer for feature extraction
+    #cnn_out = Conv1D(filters=64, kernel_size=3, activation='relu', padding='same')(input_seq1)
+    
+    # LSTM layer
+lstm_out = LSTM(128, return_sequences=True)(input_seq1)
+lstm_out = Dropout(0.2)(lstm_out)
+lstm_out = LSTM(64, return_sequences=True)(lstm_out)
+lstm_out = Dropout(0.2)(lstm_out)
+
+
+# Multi-head self-attention
+self_attention = MultiHeadAttention(num_heads=4, key_dim=32)(lstm_out, lstm_out)
+self_attention = Add()([self_attention, lstm_out])  # Residual connection
+self_attention = LayerNormalization(epsilon=1e-6)(self_attention)
+
+# Cross-head attention between the self-attended output and the secondary input sequence
+cross_attention = MultiHeadAttention(num_heads=4, key_dim=32)(self_attention, input_seq2)
+cross_attention = Add()([cross_attention, self_attention])  # Residual connection
+cross_attention = LayerNormalization(epsilon=1e-6)(cross_attention)
+
+# Flatten and dense layers for final prediction
+flatten = Flatten()(cross_attention)
+dense_layer = Dense(64, activation='relu')(flatten)
+dense_layer = Dropout(0.2)(dense_layer)
+output_layer = Dense(1)(dense_layer)
+
+# Create the model
+model = Model(inputs=[input_seq1, input_seq2], outputs=output_layer)
+optimizer = tf.keras.optimizers.Adam(clipnorm=1.0)
+model.compile(optimizer=optimizer, loss='mean_squared_error')
+
+#model.summary()
+
+history = model.fit([X_train, X_train], Y_train, epochs=80, batch_size=32, validation_data=([X_test, X_test], Y_test), verbose=1, callbacks=[model_checkpoint_callback])

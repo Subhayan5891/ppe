@@ -1,0 +1,72 @@
+# Custom layer to share weights between similar type variables
+class SharedLayer(Layer):
+    def __init__(self, units, **kwargs):
+        self.units = units
+        super(SharedLayer, self).__init__(**kwargs)
+
+    def build(self, input_shape):
+        self.kernel = self.add_weight("kernel", shape=[input_shape[-1], self.units], initializer=GlorotUniform(seed=42))
+        super(SharedLayer, self).build(input_shape)
+
+    def call(self, inputs):
+        return tf.matmul(inputs, self.kernel)
+
+
+# Define input layers
+input_A1_A16 = Input(shape=(16,), name='input_A1_A16')
+input_B1_B16 = Input(shape=(16,), name='input_B1_B16')
+input_C1_C16 = Input(shape=(16,), name='input_C1_C16')
+input_D1_D16 = Input(shape=(16,), name='input_D1_D16')
+
+input_Damper = Input(shape=(22,), name='input_Damper')
+input_Mill_Loading = Input(shape=(6,), name='input_Mill_Loading')
+
+input_others = Input(shape=(6,), name='input_others')
+
+# Shared layers for weight tying
+shared_layer_A1_A16 = SharedLayer(64)
+shared_layer_B1_B16 = SharedLayer(64)
+shared_layer_C1_C16 = SharedLayer(64)
+shared_layer_D1_D16 = SharedLayer(64)
+
+shared_layer_Damper = SharedLayer(64)
+shared_layer_Mill_Loading = SharedLayer(64)
+
+
+sub_sub_branch_1 = shared_layer_A1_A16(input_A1_A16)
+sub_sub_branch_1 = BatchNormalization()(sub_sub_branch_1)
+sub_sub_branch_1 = Activation('relu')(sub_sub_branch_1)
+
+sub_sub_branch_2 = shared_layer_B1_B16(input_B1_B16)
+sub_sub_branch_2 = BatchNormalization()(sub_sub_branch_2)
+sub_sub_branch_2 = Activation('relu')(sub_sub_branch_2)
+
+sub_sub_branch_3 = shared_layer_C1_C16(input_C1_C16)
+sub_sub_branch_3 = BatchNormalization()(sub_sub_branch_3)
+sub_sub_branch_3 = Activation('relu')(sub_sub_branch_3)
+
+sub_sub_branch_4 = shared_layer_D1_D16(input_D1_D16)
+sub_sub_branch_4 = BatchNormalization()(sub_sub_branch_4)
+sub_sub_branch_4 = Activation('relu')(sub_sub_branch_4)
+
+
+
+sub_branch_1 = Concatenate()([sub_sub_branch_1, sub_sub_branch_2, sub_sub_branch_3, sub_sub_branch_4])
+sub_branch_1 = SharedLayer(32)(sub_branch_1)
+sub_branch_1 = BatchNormalization()(sub_branch_1)
+sub_branch_1 = Activation('relu')(sub_branch_1)
+
+sub_branch_2 = shared_layer_Damper(input_Damper)
+sub_branch_2 = BatchNormalization()(sub_branch_2)
+sub_branch_2 = Activation('relu')(sub_branch_2)
+
+sub_branch_3 = shared_layer_Mill_Loading(input_Mill_Loading)
+sub_branch_3 = BatchNormalization()(sub_branch_3)
+sub_branch_3 = Activation('relu')(sub_branch_3)
+
+main_branch_input = Concatenate()([sub_branch_1, sub_branch_2,sub_branch_3, input_others])
+#main_branch = SharedLayer(32)(main_branch_input)
+main_branch = Dense(128, activation='relu', kernel_initializer=GlorotUniform(seed=42))(main_branch_input)
+main_branch = BatchNormalization()(main_branch)
+main_branch = Activation('relu')(main_branch)
+
