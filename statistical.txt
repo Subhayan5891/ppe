@@ -1,0 +1,21 @@
+Prior to completing this discussion forum, read the Ethics in Statistical Practice and Communication: Five Recommendations  Actions
+ article. Cite resources and references appropriately in APA format.
+•	Briefly summarize a problem or application you encountered in your academic or professional career and explain the importance of statistical ethics and the ramifications of failing to follow ethical statistical practice.
+
+Problem I face in my professional carrier:
+As an analytical professional in the thermal power plant industry, I was assigned the task of developing a model for intelligent soot blowing methodology in boilers. In a thermal power plant, coal is burned inside the boiler to generate heat, which turns water into superheated steam. This steam drives a turbine, which then produces electricity through a generator.
+During the combustion process within the boiler, soot and ash are generated and accumulate on the surfaces of water (or steam) tubes. This buildup reduces the efficiency of heat transfer to the water. To prevent this, soot is regularly removed using a soot blower to maintain clean tube surfaces and ensure efficient heat transfer.
+However, excessive soot blowing can increase the risk of boiler tube erosion (leading to leaks) and consumes more steam for the blowing process. There is no mechanism to visually observe the actual deposition of soot on the tube surfaces. Soot blowing in various areas was carried out at predetermined intervals, regardless of operational parameters.
+The goal was to develop a model capable of indicating recommendations for when and where to blow based on operational parameters to optimize heat transfer while reducing the risk of tube failure or excessive steam consumption.
+The amount of generated soot depends on the quantity of coal, coal quality, along with various operational parameters. However, real-time coal quality data is typically unavailable, which is why it was not considered.
+The model was trained using only 6 months of data.
+Violation of statistical ethics:
+Before analysis began, it was determined that removing coal quality data would not impact the model's performance.
+Six months of data was deemed sufficient for model training. It was overlooked that the occurrence of clinker (which forms when ash and non-combustible elements fuse at elevated temperatures, i.e., above ash fusion temperature) during that period was very low. Hence, the dataset was insufficient to capture the behavior of operational and sensing parameters when operating with coal prone to clinker formation during combustion.
+Also, the uncerainity of the prediction was not stated to operators, that’s why the suggestions were followed blindly with out considering deviations in predicted vs actual measured data.
+Ramifications:
+Initially, the process went well, but after some time, heavy clinking was observed inside the Boiler, which suddenly fell, creating unfavorable conditions for boiler operation. In other words, the model failed to identify the buildup of clinker and provided recommendations for insufficient soot blowing.
+Way-out:
+During developing the 2nd version of these model, the data duration was decided considering both clinkering and non-clinkering zone. 
+Also it was made available to operators (and the model) the important coal quality while operating the boiler.
+The provision given to operator to do additional soot blowing if they feel and the same is being recorded to check its effect and further improvement of the soot blowing tool.
